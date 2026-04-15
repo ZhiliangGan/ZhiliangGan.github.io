@@ -1,0 +1,33 @@
+baseURL = 'https://jamesgan.com/'
+locale = 'en-us'
+title = 'James Gan'
+theme = 'PaperMod'
+
+[params]
+  author = "James Gan"
+  description = "Personal website of James Gan"
+  homeSubtitle = "Software Engineer & Developer"
+
+[[menu.main]]
+  identifier = "home"
+  name = "Home"
+  url = "/"
+  weight = 1
+
+[[menu.main]]
+  identifier = "posts"
+  name = "Posts"
+  url = "/posts/"
+  weight = 2
+
+[[menu.main]]
+  identifier = "archives"
+  name = "Archives"
+  url = "/archives/"
+  weight = 3
+
+[[menu.main]]
+  identifier = "about"
+  name = "About"
+  url = "/about/"
+  weight = 4
