@@ -2,19 +2,19 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>James Gan</title>
-    <link>http://localhost:50281/</link>
+    <link>https://jamesgan.com/</link>
     <description>Recent content on James Gan</description>
     <generator>Hugo</generator>
     <language>en-us</language>
     <lastBuildDate>Wed, 15 Apr 2026 00:00:00 +0000</lastBuildDate>
-    <atom:link href="http://localhost:50281/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://jamesgan.com/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>About</title>
-      <link>http://localhost:50281/about/</link>
+      <link>https://jamesgan.com/about/</link>
       <pubDate>Wed, 15 Apr 2026 00:00:00 +0000</pubDate>
-      <guid>http://localhost:50281/about/</guid>
+      <guid>https://jamesgan.com/about/</guid>
       <description>&lt;h1 id=&#34;about-me&#34;&gt;About Me&lt;/h1&gt;
-&lt;p&gt;Hi, I&amp;rsquo;m James Gan. I&amp;rsquo;m a software engineer passionate about building great products and sharing knowledge with the community.&lt;/p&gt;
+&lt;p&gt;Hi, I&amp;rsquo;m James. I&amp;rsquo;m a software engineer passionate about building great products and sharing knowledge with the community.&lt;/p&gt;
 &lt;h2 id=&#34;skills&#34;&gt;Skills&lt;/h2&gt;
 &lt;ul&gt;
 &lt;li&gt;Software Development&lt;/li&gt;
@@ -22,13 +22,13 @@
 &lt;li&gt;Open Source&lt;/li&gt;
 &lt;/ul&gt;
 &lt;h2 id=&#34;contact&#34;&gt;Contact&lt;/h2&gt;
-&lt;p&gt;Feel free to reach out via &lt;a href=&#34;mailto:james@example.com&#34;&gt;email&lt;/a&gt; or connect on social media.&lt;/p&gt;</description>
+&lt;p&gt;Feel free to reach out via &lt;a href=&#34;mailto:happygzl@gmail.com&#34;&gt;email&lt;/a&gt; or connect on social media.&lt;/p&gt;</description>
     </item>
     <item>
       <title>Hello World</title>
-      <link>http://localhost:50281/posts/hello-world/</link>
+      <link>https://jamesgan.com/posts/hello-world/</link>
       <pubDate>Wed, 15 Apr 2026 00:00:00 +0000</pubDate>
-      <guid>http://localhost:50281/posts/hello-world/</guid>
+      <guid>https://jamesgan.com/posts/hello-world/</guid>
       <description>&lt;p&gt;Welcome to my blog! This is my first post using Hugo and PaperMod theme.&lt;/p&gt;
 &lt;p&gt;Stay tuned for more content coming soon.&lt;/p&gt;</description>
     </item>

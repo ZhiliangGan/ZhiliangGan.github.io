@@ -6,7 +6,7 @@ draft: false
 
 # About Me
 
-Hi, I'm James Gan. I'm a software engineer passionate about building great products and sharing knowledge with the community.
+Hi, I'm James. I'm a software engineer passionate about building great products and sharing knowledge with the community.
 
 ## Skills
 
@@ -16,4 +16,4 @@ Hi, I'm James Gan. I'm a software engineer passionate about building great produ
 
 ## Contact
 
-Feel free to reach out via [email](mailto:james@example.com) or connect on social media.
+Feel free to reach out via [email](mailto:happygzl@gmail.com) or connect on social media.

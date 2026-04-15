@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QMT 量化交易系统 — 架构分析报告</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2333;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --accent: #58a6ff;
+    --accent2: #3fb950;
+    --accent3: #f0883e;
+    --accent4: #bc8cff;
+    --accent5: #f778ba;
+    --red: #f85149;
+    --code-bg: #0d1117;
+    --tag-green: #238636;
+    --tag-blue: #1f6feb;
+    --tag-orange: #bd6a00;
+    --tag-red: #da3633;
+    --tag-purple: #8957e5;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC', Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+    font-size: 15px;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 280px;
+    height: 100vh;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 24px 20px;
+    z-index: 100;
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar h3 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar ul { list-style: none; }
+
+  .sidebar li { margin-bottom: 4px; }
+
+  .sidebar a {
+    display: block;
+    padding: 6px 12px;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-size: 13px;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .sidebar a:hover {
+    background: rgba(88, 166, 255, 0.08);
+    color: var(--accent);
+  }
+
+  .sidebar .sub { padding-left: 16px; }
+  .sidebar .sub a { font-size: 12px; padding: 4px 12px; }
+
+  /* Main content */
+  .main {
+    margin-left: 280px;
+    max-width: 860px;
+    padding: 48px 40px 120px;
+  }
+
+  /* Top bar */
+  .topbar {
+    position: fixed;
+    top: 0;
+    left: 280px;
+    right: 0;
+    height: 56px;
+    background: rgba(13, 17, 23, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    z-index: 99;
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+  }
+
+  .topbar span { font-size: 14px; color: var(--text-muted); }
+
+  /* Hero */
+  .hero {
+    margin-bottom: 48px;
+    padding: 40px;
+    background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(88, 166, 255, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent4));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero .meta {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.8;
+  }
+
+  .hero .meta code {
+    background: rgba(88, 166, 255, 0.1);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* Headings */
+  h2 {
+    font-size: 24px;
+    font-weight: 600;
+    margin: 56px 0 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 36px 0 14px;
+    color: var(--accent);
+  }
+
+  h4 {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 24px 0 10px;
+    color: var(--accent3);
+  }
+
+  /* Paragraphs */
+  p {
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+
+  /* Blockquote */
+  blockquote {
+    border-left: 3px solid var(--accent);
+    padding: 12px 20px;
+    margin: 16px 0;
+    background: rgba(88, 166, 255, 0.04);
+    border-radius: 0 8px 8px 0;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  /* Code blocks */
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 16px 0;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.65;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+
+  pre code { color: var(--text); }
+
+  code {
+    background: rgba(110, 118, 129, 0.25);
+    color: var(--accent);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* Syntax colors in code blocks */
+  .kw { color: #ff7b72; }
+  .fn { color: #d2a8ff; }
+  .str { color: #a5d6ff; }
+  .cmt { color: #8b949e; font-style: italic; }
+  .num { color: #79c0ff; }
+  .dec { color: #ffa657; }
+
+  /* Tables */
+  .table-wrap {
+    overflow-x: auto;
+    margin: 20px 0;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead { background: var(--surface2); }
+
+  th {
+    padding: 12px 16px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--accent);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+
+  tbody tr:last-child td { border-bottom: none; }
+
+  tbody tr:hover { background: rgba(88, 166, 255, 0.04); }
+
+  /* Tags / badges */
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .badge-green { background: var(--tag-green); color: #fff; }
+  .badge-blue  { background: var(--tag-blue); color: #fff; }
+  .badge-orange { background: var(--tag-orange); color: #fff; }
+  .badge-red   { background: var(--tag-red); color: #fff; }
+  .badge-purple { background: var(--tag-purple); color: #fff; }
+  .badge-muted { background: #30363d; color: var(--text-muted); }
+
+  /* File tree */
+  .file-tree {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 16px 0;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.8;
+    color: var(--text-muted);
+  }
+
+  .file-tree .dir { color: var(--accent); }
+  .file-tree .file { color: var(--text); }
+  .file-tree .comment { color: var(--accent3); }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 16px 0;
+  }
+
+  .card h4 { margin-top: 0; }
+
+  /* Flow diagram */
+  .flow {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 16px 0;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12.5px;
+    line-height: 1.85;
+    color: var(--text-muted);
+  }
+
+  .flow .arrow { color: var(--accent); }
+  .flow .node { color: var(--accent2); }
+  .flow .fn-name { color: var(--accent4); }
+
+  /* Status indicator */
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+  }
+
+  .status::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  .status-ok::before { background: var(--accent2); }
+  .status-wip::before { background: var(--accent3); }
+  .status-todo::before { background: var(--text-muted); }
+
+  /* Separator */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 40px 0;
+  }
+
+  /* Lists */
+  ul, ol {
+    margin: 12px 0;
+    padding-left: 24px;
+  }
+
+  li {
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+
+  li > code {
+    font-size: 12px;
+  }
+
+  /* Mobile */
+  .menu-toggle {
+    display: none;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-size: 18px;
+    cursor: pointer;
+  }
+
+  @media (max-width: 900px) {
+    .sidebar { transform: translateX(-100%); }
+    .sidebar.open { transform: translateX(0); }
+    .main { margin-left: 0; padding: 72px 20px 80px; }
+    .topbar { left: 0; padding-left: 56px; }
+    .menu-toggle { display: block; }
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* Highlight note */
+  .note {
+    border-left: 3px solid var(--accent3);
+    padding: 12px 20px;
+    margin: 16px 0;
+    background: rgba(240, 136, 62, 0.06);
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+  }
+
+  .note strong { color: var(--accent3); }
+
+  /* Anchor links */
+  h2[id]::before, h3[id]::before {
+    content: '#';
+    color: var(--accent);
+    opacity: 0;
+    margin-left: -20px;
+    margin-right: 4px;
+    transition: opacity 0.15s;
+  }
+
+  h2[id]:hover::before, h3[id]:hover::before { opacity: 1; }
+</style>
+</head>
+<body>
+
+<button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">☰</button>
+
+<nav class="sidebar">
+  <h3>目录导航</h3>
+  <ul>
+    <li><a href="#overview">1. 项目概览</a></li>
+    <li><a href="#architecture">2. 架构解析</a></li>
+    <li class="sub"><a href="#layers">2.2 各层/模块职责</a></li>
+    <li class="sub"><a href="#supplement-1">① 可安装子模块</a></li>
+    <li class="sub"><a href="#supplement-2">② service/storage 内容</a></li>
+    <li class="sub"><a href="#supplement-3">③ TDX API 说明</a></li>
+    <li class="sub"><a href="#supplement-4">④ gRPC 桥接</a></li>
+    <li class="sub"><a href="#supplement-5">⑤ SAF 详解</a></li>
+    <li><a href="#functions">3. 功能解析</a></li>
+    <li class="sub"><a href="#scenario-a">场景 A — 实盘交易</a></li>
+    <li class="sub"><a href="#scenario-b">场景 B — 盘中监控</a></li>
+    <li class="sub"><a href="#scenario-c">场景 C — 策略评估</a></li>
+    <li class="sub"><a href="#scenario-d">场景 D — LLM 辩论</a></li>
+    <li><a href="#data-flow">4. 数据流转</a></li>
+    <li><a href="#qa">5. 补充问答</a></li>
+    <li class="sub"><a href="#q1">Q1: StrategySpec</a></li>
+    <li class="sub"><a href="#q2">Q2: 五大回测引擎</a></li>
+    <li class="sub"><a href="#q3">Q3: 6D 评分水准</a></li>
+    <li class="sub"><a href="#q4">Q4: 三阶段流水线</a></li>
+    <li class="sub"><a href="#q5">Q5: 评分标准</a></li>
+    <li class="sub"><a href="#q6">Q6: 配对交易修复</a></li>
+    <li class="sub"><a href="#q7">Q7: 策略库可运行性</a></li>
+  </ul>
+</nav>
+
+<div class="topbar">
+  <span>QMT Architecture Analysis — 2026-04-15</span>
+</div>
+
+<main class="main">
+
+  <!-- Hero -->
+  <div class="hero">
+    <h1>QMT 量化交易系统 — 架构分析报告</h1>
+    <div class="meta">
+      <div>分析基准：<code>/Users/a2030/01-Project/qmt-20260415</code></div>
+      <div>更新日期：2026-04-14（补全第一版所有「推测」标记）</div>
+      <div>新增文件：<code>strategy/base.py</code>、<code>qdata/service/data_service.py</code>、<code>qdata/storage/bar_store.py</code>、<code>qdata/adapters/tdx_api_adapter.py</code>、<code>SAF/strategy_factory/tdx_api.py</code>、<code>SAF/core/saf/evaluation/scorer.py</code>、<code>SAF/core/saf/evaluation/metrics.py</code></div>
+    </div>
+  </div>
+
+  <!-- Section 1 -->
+  <h2 id="overview">1. 项目概览</h2>
+  <p>QMT 是一个面向个人/私募量化交易者的 <strong>A 股量化交易全流程系统</strong>，覆盖「策略研究 → 批量回测评估 → 盘中监控 → 实盘交易执行」四个阶段。</p>
+  <p>系统以 Python Monorepo 形式组织，由多个子模块构成，共享同一套配置管理与数据层。其中两个模块（<code>config</code> 和 <code>qdata</code>）通过 <code>pip install -e .</code> 安装为本地 Python 包，可被其他模块用 <code>import</code> 直接引用；另外三个（<code>qss</code>、<code>sps</code>、<code>SAF</code>）是直接通过命令行运行的应用程序，不需要安装。</p>
+  <p>技术栈为 Python 3.10+，核心中间件包括：QMT xtdata/xttrader（Windows 实盘）、AKShare（跨平台行情备份）、FastAPI（监控 API）、SQLite（历史数据本地缓存）、LLM API（辩论决策引擎）。</p>
+  <p>系统支持 Windows（实盘）/ Mac+Linux（研究、回测、监控）双平台运行，数据源在不可用时自动降级。</p>
+
+  <!-- Section 2 -->
+  <h2 id="architecture">2. 架构解析</h2>
+
+  <h3 id="layers">2.1 整体分层结构</h3>
+  <div class="file-tree">
+    <span class="dir">qmt-20260415/</span><br>
+    ├── <span class="dir">config/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">#[共享层] 统一配置管理（可 pip install -e 安装）</span><br>
+    ├── <span class="dir">qdata/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">#[共享层] 统一数据网关（可 pip install -e 安装）</span><br>
+    │ &nbsp;&nbsp; ├── <span class="dir">qmt_gateway/</span> &nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">#gRPC 桥接服务（Windows, qmt_remote 模式）</span><br>
+    │ &nbsp;&nbsp; └── <span class="dir">qdata/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">#数据适配层（多数据源统一抽象）</span><br>
+    ├── <span class="dir">qss/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">#[应用层] 实盘交易执行系统</span><br>
+    ├── <span class="dir">sps/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">#[应用层] 盘中信号监控系统</span><br>
+    ├── <span class="dir">SAF/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">#[研究层] 策略回测工厂（Strategy Analysis Framework）</span><br>
+    ├── <span class="dir">its/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">#[决策层] LLM 辩论决策引擎</span><br>
+    ├── <span class="dir">tss/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">#[研究层] 策略研发回测（当前为空/待迁移）</span><br>
+    └── <span class="dir">scripts/</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="comment">#工具脚本</span>
+  </div>
+
+  <h3>2.2 各层/模块职责</h3>
+
+  <h4><code>config/</code> — 统一配置中心</h4>
+  <ul>
+    <li>文件：<code>base.yaml</code>、<code>gateway.yaml</code>、<code>llm.yaml</code>、<code>strategies.yaml</code>、<code>watch_list.yaml</code>、<code>golden_pool.yaml</code></li>
+    <li>职责：管理系统级参数（数据路径、日志、数据源优先级、回测默认参数、风控阈值、策略列表、通知 Webhook）</li>
+    <li>入口：<code>loader.py</code>，被 QSS/SPS/SAF 通过 <code>from config import ConfigManager, get_settings</code> 导入</li>
+  </ul>
+
+  <h4><code>qdata/</code> — 统一数据网关（跨平台）</h4>
+  <ul>
+    <li><strong><code>qdata/qdata/adapters/</code></strong>：多数据源适配器（12个文件），按优先级支持：
+      <ul>
+        <li><code>qmt_adapter.py</code> — QMT xtdata（Windows，最高优先级）</li>
+        <li><code>qmt_remote_adapter.py</code> — gRPC 远程 QMT</li>
+        <li><code>akshare_adapter.py</code> — AKShare（跨平台，免费）</li>
+        <li><code>csv_adapter.py</code> — 本地 CSV</li>
+        <li><code>tdx_api_adapter.py</code> — 通达信 TdxClaw HTTP API</li>
+        <li><code>tdx_etf_adapter.py</code>、<code>tdx_futures_adapter.py</code>、<code>tdx_cb_adapter.py</code> 等专用适配器</li>
+      </ul>
+    </li>
+    <li><strong><code>qdata/qmt_gateway/</code></strong>：gRPC 桥接服务，在 Windows 宿主运行，Mac/Linux 通过 gRPC Remote 访问 xtdata</li>
+    <li><strong><code>qdata/service/data_service.py</code></strong>：<code>DataService</code> 统一服务入口，初始化时按 <code>prefer</code> 参数决定适配器顺序（默认 <code>auto</code>：qmt_remote → tdx_api → qmt → akshare → csv），检测每个适配器可用性，维护 <code>available_sources</code> 列表。<code>load_bars()</code> 方法先查本地 SQLite 缓存，未命中再按优先级降级拉取，拉到后写缓存。</li>
+    <li><strong><code>qdata/storage/bar_store.py</code></strong>：存储层使用 <strong>SQLite</strong>（<code>bars.db</code>），表结构：<code>bars(symbol, frequency, datetime, open, high, low, close, volume, turnover, adj_factor)</code>，支持 UPSERT 增量合并。</li>
+  </ul>
+
+  <h4><code>qss/</code> — 实盘交易执行系统</h4>
+  <ul>
+    <li>入口：<code>main.py</code></li>
+    <li>子模块：
+      <ul>
+        <li><code>core/data_feed.py</code> — 行情统一接口</li>
+        <li><code>core/event_bus.py</code> — 异步事件总线</li>
+        <li><code>core/signal_processor.py</code> — 信号消费者（风控验证 → 执行）</li>
+        <li><code>core/notification.py</code> — 飞书通知桥</li>
+        <li><code>strategy/</code> — 策略实现（MACross、PEValue、Trend、Timing、Resonance）</li>
+        <li><code>executor/</code> — 执行器（qmt_executor、simulated、remote）</li>
+        <li><code>risk/</code> — 风控（risk_manager、stop_loss、portfolio_provider）</li>
+        <li><code>llm/client.py</code> — AI 客户端</li>
+        <li><code>api/</code> — FastAPI Web Dashboard</li>
+      </ul>
+    </li>
+  </ul>
+
+  <h4><code>sps/</code> — 盘中信号监控系统</h4>
+  <ul>
+    <li>入口：<code>wave_monitor.py</code>（直接运行）</li>
+    <li>四层分离架构：data_adapter → async_fetcher → vector_engine → wave_monitor</li>
+    <li>状态持久化：<code>.wave_status_db.json</code>、<code>.wave_signal_cache.json</code></li>
+    <li>数据库：<code>wave_history.db</code>（SQLite）</li>
+  </ul>
+
+  <h4><code>SAF/</code> — 策略评估工厂</h4>
+  <ul>
+    <li>实际路径：<code>SAF/strategy_factory/</code>（核心执行目录）</li>
+    <li>入口：<code>run_evaluate.py</code>（3891 行，批量评估主控）</li>
+    <li>新 SAF 引擎核心（<code>SAF/core/saf/</code>）已迁移完成（Phase 1 ✅）</li>
+    <li>SFF → SAF 迁移适配层（Phase 2）仍在进行中</li>
+  </ul>
+
+  <h4><code>its/</code> — LLM 辩论决策引擎</h4>
+  <ul>
+    <li><code>debate/engine.py</code> — DebateEngine（维度隔离辩论）</li>
+    <li><code>debate/models.py</code> — 所有数据模型</li>
+    <li><code>debate/prompts.py</code> — Prompt 模板</li>
+    <li><code>debate/context_builder.py</code> — 上下文构建器</li>
+    <li><code>debate/signal_adapter.py</code> — 信号适配器</li>
+    <li><code>memory/store.py</code> — 辩论历史持久化</li>
+    <li><code>news/</code>、<code>sentiment/</code>、<code>screener.py</code>、<code>golden_pool.py</code></li>
+  </ul>
+
+  <!-- Supplement sections -->
+  <h3 id="supplement-1">补充说明 ① — 可安装子模块</h3>
+  <p><code>config</code> 和 <code>qdata</code> 通过 <code>pyproject.toml</code> 注册为 Python 包，执行 <code>pip install -e .</code> 后以开发模式安装，其他模块可直接 <code>import</code>，不需要 <code>sys.path</code> hack。</p>
+
+  <h3 id="supplement-2">补充说明 ② — service/storage 实际内容</h3>
+  <div class="card">
+    <h4><code>DataService</code>（282行）</h4>
+    <ul>
+      <li>按 <code>prefer</code> 参数初始化适配器列表，默认顺序：qmt_remote → tdx_api → qmt → akshare → csv</li>
+      <li>启动时探针检测，记录 <code>available_sources</code></li>
+      <li><code>load_bars()</code>：查 SQLite → 未命中按适配器顺序降级拉取 → 写回 SQLite</li>
+    </ul>
+    <h4><code>BarStore</code>（220行）</h4>
+    <ul>
+      <li><strong>SQLite 格式</strong>，文件：<code>&lt;parquet_root&gt;/bars.db</code></li>
+      <li>表结构：<code>bars(symbol TEXT, frequency TEXT, datetime TEXT, ...)</code></li>
+      <li>写入使用 <code>INSERT ... ON CONFLICT DO UPDATE</code>（UPSERT）</li>
+    </ul>
+  </div>
+
+  <h3 id="supplement-3">补充说明 ③ — TDX API（通达信 TdxClaw HTTP API）</h3>
+  <ul>
+    <li><strong>不是</strong>通达信金融终端，也<strong>不是</strong>pytdx</li>
+    <li>是「<strong>TdxClaw</strong>」提供的 <strong>HTTP REST API</strong>，服务地址：<code>http://tdxhub.icfqs.com:7615/TQLEX</code></li>
+    <li>文件头注释：「从 TdxClaw 逆向提取，支持 Mac/Linux 独立运行」</li>
+    <li>认证方式：HTTP 请求头加 <code>token</code> 字段</li>
+    <li>实现方式：标准库 <code>urllib.request</code>，无第三方依赖</li>
+  </ul>
+  <p>支持的接口：</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>接口</th><th>功能</th><th>备注</th></tr></thead>
+      <tbody>
+        <tr><td><code>kline()</code></td><td>K线数据</td><td>Period: 4=日线, 0=1分钟 等</td></tr>
+        <tr><td><code>quotes()</code></td><td>实时行情快照</td><td>5档盘口</td></tr>
+        <tr><td><code>screener()</code></td><td>自然语言条件选股</td><td>如 "涨停"、"放量上涨"</td></tr>
+        <tr><td><code>api_data()</code></td><td>财务数据</td><td>需正式 token</td></tr>
+        <tr><td><code>wenda_*()</code></td><td>资讯/公告/研报</td><td>需 TDX 账号登录</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="supplement-4">补充说明 ④ — gRPC 桥接</h3>
+  <p><strong>背景</strong>：QMT xtquant 的 Python SDK 仅能在 Windows 机器上运行。</p>
+  <div class="flow">
+    <span class="node">Mac/Linux 端</span> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="node">Windows 端（需安装 QMT 客户端）</span><br>
+    ───────────────── &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;─────────────────────────────────────<br>
+    QmtRemoteAdapter &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;gateway.py<br>
+    &nbsp;&nbsp;&nbsp;│ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;│<br>
+    &nbsp;&nbsp;&nbsp;<span class="arrow">├─ gRPC :50051 ──→ QmtDataServiceImpl ──→ XtdataBridge ──→ xtdata（行情）</span><br>
+    &nbsp;&nbsp;&nbsp;<span class="arrow">└─ JSON-RPC :8080 → RemoteExecutorServer ──→ QMTExecutor ──→ xtquant（交易）</span>
+  </div>
+
+  <h3 id="supplement-5">补充说明 ⑤ — SAF 详解</h3>
+  <p>SAF 是策略研究枢纽，承担「策略 JSON → 自动批量回测 → 打分排名」流水线。</p>
+
+  <h4>两种回测引擎</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>引擎</th><th>文件</th><th>适用场景</th></tr></thead>
+      <tbody>
+        <tr><td><code>TimeSeriesExecutionEngine</code></td><td>time_series.py</td><td>单标的时序策略（均线/趋势跟踪）</td></tr>
+        <tr><td><code>PanelExecutionEngine</code></td><td>panel.py</td><td>横截面多标的策略（选股因子）</td></tr>
+        <tr><td><code>PairExecutionEngine</code></td><td>pair.py</td><td>配对交易策略</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>6维评分系统</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>维度</th><th>权重</th><th>核心指标</th><th>满分条件</th></tr></thead>
+      <tbody>
+        <tr><td>收益（Return）</td><td>35%</td><td>CAGR(40%) + Sharpe(30%) + PF(30%)</td><td>CAGR≥50%、Sharpe≥3、PF≥3</td></tr>
+        <tr><td>稳健性（Robust）</td><td><strong>45%</strong></td><td>MaxDD(30%) + Calmar(25%) + 滚动Sharpe(25%) + Sortino(20%)</td><td>MaxDD&lt;0%、Calmar≥3</td></tr>
+        <tr><td>可实施性</td><td>20%</td><td>胜率(30%) + 赔率(30%) + 持仓天数(20%) + 换手率(20%)</td><td>胜率≥70%、赔率≥3</td></tr>
+        <tr><td>风控（独立）</td><td>—</td><td>MaxDD</td><td>MaxDD&lt;0%</td></tr>
+        <tr><td>效率（独立）</td><td>—</td><td>Calmar + Sortino</td><td>Calmar≥3、Sortino≥4</td></tr>
+        <tr><td>一致性（独立）</td><td>—</td><td>滚动Sharpe标准差</td><td>波动越小越好</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>总分 = 0.35×收益 + 0.45×稳健性 + 0.20×可实施性</strong>（稳健性权重最高）
+  </div>
+
+  <h4>硬淘汰规则（任一触发 → 直接 eliminated）</h4>
+  <ul>
+    <li>最大回撤 &gt; 40%</li>
+    <li>夏普 &lt; 0.3</li>
+    <li>年化收益 &lt; 0%（扣费后）</li>
+    <li>交易次数 &lt; 6 次</li>
+    <li>胜率 &lt; 20%</li>
+  </ul>
+
+  <h4>Tier 分级</h4>
+  <p>
+    <span class="badge badge-green">S ≥85分</span>&nbsp;
+    <span class="badge badge-blue">A ≥70分</span>&nbsp;
+    <span class="badge badge-orange">B ≥55分</span>&nbsp;
+    <span class="badge badge-red">C &lt;55分</span>&nbsp;
+    <span class="badge badge-muted">eliminated</span>
+  </p>
+
+  <h4>策略 JSON 流转路径</h4>
+  <div class="flow">
+    <span class="node">量化平台导出的策略 JSON</span><br>
+    <span class="arrow">→</span> <span class="fn-name">SAF/strategy_factory/out/</span> 目录<br>
+    <span class="arrow">→</span> <span class="fn-name">run_evaluate.py</span> 扫描 → <span class="fn-name">load_signal_func_from_json()</span><br>
+    <span class="arrow">→</span> 路由到对应股票池（ETF/股票/全池）<br>
+    <span class="arrow">→</span> <span class="fn-name">SAFEngineAdapter</span> → <span class="fn-name">engine.compute()</span> → <span class="node">equity_curve</span><br>
+    <span class="arrow">→</span> <span class="fn-name">calculate_basic_metrics</span> + <span class="fn-name">calculate_extended_metrics</span><br>
+    <span class="arrow">→</span> <span class="fn-name">check_elimination()</span> → <span class="fn-name">score_strategy_6d()</span> → <span class="node">Score6D(tier)</span><br>
+    <span class="arrow">→</span> <span class="fn-name">compare_claims_to_metrics()</span> → 宣称 vs 实测偏差<br>
+    <span class="arrow">→</span> <span class="fn-name">evaluate_results/</span> JSON 报告
+  </div>
+
+  <hr>
+
+  <!-- Section 3: Scenarios -->
+  <h2 id="functions">3. 功能解析</h2>
+
+  <h3 id="scenario-a">场景 A — 实盘/模拟盘交易执行</h3>
+  <p><strong>入口</strong>：<code>python qss/main.py</code></p>
+  <div class="flow">
+    <span class="fn-name">main()</span><br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">ConfigManager.load()</span> → config/base.yaml + strategies.yaml<br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">DataFeed(settings)</span> → 初始化 qdata.DataService + xtdata<br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">create_executor(settings)</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> QMTExecutor → <span class="node">executor.connect()</span>（Windows + QMT 可用时）<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">└─</span> SimulatedExecutor（其他，自动降级）<br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">RiskManager(settings, portfolio)</span><br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">SignalProcessor(executor, risk_mgr)</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">└─</span> event_bus.subscribe(<span class="node">EVENT_SIGNAL</span>, _handle_signal)<br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">NotificationBridge(webhook_url)</span><br>
+    &nbsp;<span class="arrow">├─</span> [for each strategy] <span class="fn-name">create_strategy()</span> → <span class="node">strategy.start()</span><br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">init_api(executor, risk_mgr, strategies)</span><br>
+    &nbsp;<span class="arrow">├─</span> [if api_enabled] <span class="fn-name">uvicorn.run(api_app)</span><br>
+    &nbsp;<span class="arrow">└─</span> <span class="kw">while True: time.sleep(1)</span>
+  </div>
+
+  <h4>策略触发机制</h4>
+  <div class="flow">
+    <span class="fn-name">StrategyBase.start()</span><br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">on_init()</span> ← 子类覆写，加载历史数据等<br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">_bind_events()</span> ← 关键：EventBus 事件绑定<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> event_bus.subscribe(<span class="node">EVENT_TICK</span>, self._handle_tick)<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> event_bus.subscribe(<span class="node">EVENT_BAR</span>, self._handle_bar)<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> ...<br>
+    &nbsp;<span class="arrow">└─</span> <span class="fn-name">on_start()</span> ← 子类覆写，订阅行情或启动定时器
+  </div>
+
+  <h4>信号处理链</h4>
+  <div class="flow">
+    <span class="node">Strategy.on_bar()</span> → event_bus.publish(<span class="node">EVENT_SIGNAL</span>, TradeSignal)<br>
+    &nbsp;&nbsp;<span class="arrow">→</span> <span class="fn-name">SignalProcessor._handle_signal()</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> <span class="fn-name">_validate_signal()</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> 检查 executor.connected<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> 检查 <span class="node">signal.confidence &gt;= 0.5</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">└─</span> risk_manager.check_signal()<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> [approved] <span class="fn-name">_execute_signal()</span> → executor.order_stock()<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">└─</span> event_bus.publish_async(<span class="node">EVENT_SIGNAL_VALIDATED / REJECTED</span>)
+  </div>
+
+  <div class="note">
+    <strong>重要业务规则：</strong><code>confidence &lt; 0.5</code> → 信号直接拒绝；executor 未连接 → 信号直接拒绝；<code>dry_run=True</code> → 检查 QMT 客户端但仍可运行。
+  </div>
+
+  <h3 id="scenario-b">场景 B — 盘中波段信号监控</h3>
+  <p><strong>入口</strong>：<code>python sps/wave_monitor.py [--loop|--init|--sync|--code XXXX]</code></p>
+  <div class="flow">
+    <span class="fn-name">main()</span><br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">load_watchlist()</span> → .watchlist_a.json<br>
+    &nbsp;<span class="arrow">└─</span> <span class="fn-name">WaveCoordinator.run_loop(watchlist)</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> <span class="fn-name">HistoryDataManager()</span> → wave_history.db<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> <span class="fn-name">QuoteFetcher()</span> → 实时行情（Sina + qdata）<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> <span class="fn-name">WaveComputeEngine(params)</span> → vector_engine.py<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> <span class="fn-name">_load_snapshot()</span> → .wave_status_db.json<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">└─</span> <span class="kw">while True:</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">└─</span> <span class="fn-name">tick(watchlist)</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> [盘后] <span class="fn-name">db.sync_pool()</span> → 同步历史数据<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> [盘中] <span class="fn-name">fetcher.fetch_a_quotes()</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> [for each stock] <span class="fn-name">db.get_or_refresh(code)</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> <span class="fn-name">asyncio.gather(_compute_one(...))</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> <span class="fn-name">_detect_transition()</span> → _TRANSITION_MAP<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">└─</span> [每小时] <span class="fn-name">_save_snapshot()</span>
+  </div>
+
+  <h4>波段状态枚举</h4>
+  <p>
+    <span class="badge badge-red">RED_WAVE</span>&nbsp;
+    <span class="badge badge-green">GREEN_WAVE</span>&nbsp;
+    <span class="badge badge-muted">GRAY_ZONE</span>&nbsp;
+    <span class="badge badge-orange">EXIT_WARNING</span>&nbsp;
+    <span class="badge badge-orange">EARLY_WARNING</span>&nbsp;
+    <span class="badge badge-green">SNIPER_BUY</span>&nbsp;
+    <span class="badge badge-orange">REDUCE_HALF</span>&nbsp;
+    <span class="badge badge-red">EXIT_ALL</span>&nbsp;
+    <span class="badge badge-blue">BUY_BASE</span>&nbsp;
+    <span class="badge badge-blue">ADD_TREND</span>
+  </p>
+
+  <h3 id="scenario-c">场景 C — 策略批量自动评估</h3>
+  <p><strong>入口</strong>：<code>python SAF/strategy_factory/run_evaluate.py [--pool-file ...] [--limit N]</code></p>
+  <div class="flow">
+    <span class="fn-name">main()</span><br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">discover_strategy_jsons(out_dir)</span> → 扫描 *.json<br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">load_data_gateway(symbols, ...)</span> → qdata 加载历史 K 线<br>
+    &nbsp;<span class="arrow">├─</span> [for each strategy] <span class="fn-name">load_signal_func_from_json(path)</span><br>
+    &nbsp;<span class="arrow">├─</span> [Phase A: 快筛] <span class="fn-name">fast_screen(strategy, symbols[:24])</span><br>
+    &nbsp;<span class="arrow">├─</span> [Phase B: 全量]（ProcessPoolExecutor 并行）<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> <span class="fn-name">plan_strategy_route()</span> → 路由：ETF池/股票池/全池<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> <span class="fn-name">infer_strategy_profile()</span> → asset_hint / freq_hint<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> <span class="fn-name">SAFEngineAdapter.run()</span> → SAF 引擎回测<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> <span class="fn-name">score_strategy()</span> → 6维评分<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> <span class="fn-name">compare_claims_to_metrics()</span> → 宣称 vs 实测<br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">rank_strategies(results)</span> → 综合评分排名<br>
+    &nbsp;<span class="arrow">└─</span> <span class="fn-name">summarize_stage_pipeline(ranked)</span> → Stage1/2/3 汇总
+  </div>
+
+  <h4>三阶段评估漏斗</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>阶段</th><th>内容</th><th>判定</th></tr></thead>
+      <tbody>
+        <tr><td>Stage 1</td><td>可运行性/适配性</td><td>失败率统计（no_signals / signal_exception / too_few_trades）</td></tr>
+        <tr><td>Stage 2</td><td>全局收益/风控评分</td><td>通过/淘汰（6D 评分执行处，C 级也算通过）</td></tr>
+        <tr><td>Stage 3</td><td>局部强势场景挖掘</td><td>从 Stage2 淘汰中捞回"局部强势"策略</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="scenario-d">场景 D — LLM 辩论决策</h3>
+  <p><strong>入口</strong>：<code>its/screener.py</code> → <code>StockScreener.screen_symbol()</code></p>
+  <div class="flow">
+    <span class="fn-name">DebateEngine.run_debate(symbol, context)</span><br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">_build_dimension_context("technical")</span> → 仅技术指标<br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">_build_dimension_context("fundamental")</span> → 仅基本面<br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">_build_dimension_context("sentiment")</span> → 仅情绪<br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">_run_technical_agent()</span> → TechnicalOutput<br>
+    &nbsp;<span class="arrow">├─</span> [if fundamental] <span class="fn-name">_run_fundamental_agent()</span> → FundamentalOutput<br>
+    &nbsp;<span class="arrow">├─</span> [if sentiment] <span class="fn-name">_run_sentiment_agent()</span> → SentimentOutput<br>
+    &nbsp;<span class="arrow">├─</span> <span class="fn-name">_run_arbiter()</span> → ArbiterOutput {action, rating, stop_loss, ...}<br>
+    &nbsp;<span class="arrow">└─</span> [if memory_store] <span class="fn-name">memory_store.save(result)</span>
+  </div>
+
+  <div class="note">
+    <strong>维度隔离设计：</strong>每个 Agent 的 prompt 只包含自身域数据，Arbiter 只看三个 Agent 的结论摘要，不直视原始数据。
+  </div>
+
+  <div class="flow">
+    <span class="fn-name">signal_adapter.py</span> 转换规则：<br>
+    &nbsp;<span class="arrow">•</span> <span class="node">arbiter.action ∈ {BUY, SELL, CLOSE}</span> 且 <span class="node">confidence ≥ 0.6</span> → 产生 TradeSignal<br>
+    &nbsp;<span class="arrow">•</span> arbiter.action ∈ {HOLD, WATCH} 或 confidence &lt; 0.6 → 返回 None<br>
+    &nbsp;<span class="arrow">•</span> BUY 使用 context.technical.price；SELL 使用 arbiter.stop_loss_price<br>
+    &nbsp;<span class="arrow">•</span> 产生的 TradeSignal <strong>同样走 EventBus 流程</strong>，进入 SignalProcessor
+  </div>
+
+  <hr>
+
+  <!-- Section 4: Data Flow -->
+  <h2 id="data-flow">4. 数据流转解析</h2>
+
+  <h3>4.1 核心数据实体</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>实体</th><th>定义位置</th><th>关键字段</th><th>业务含义</th></tr></thead>
+      <tbody>
+        <tr><td><code>DataResult</code></td><td><code>qss/core/data_feed.py:26</code></td><td>success, data, error, metadata</td><td>统一数据返回包装</td></tr>
+        <tr><td><code>TradeSignal</code></td><td><code>qss/core/signal.py</code></td><td>signal_id, signal_type, stock_code, price, volume, confidence</td><td>策略产生的交易指令</td></tr>
+        <tr><td><code>TechnicalData</code></td><td><code>its/debate/models.py:14</code></td><td>symbol, price, ma60, macd_hist, boll, skdj</td><td>技术指标快照</td></tr>
+        <tr><td><code>FundamentalData</code></td><td><code>its/debate/models.py:47</code></td><td>pe_ttm, pb, roe, revenue_growth, market_cap</td><td>基本面快照</td></tr>
+        <tr><td><code>ArbiterOutput</code></td><td><code>its/debate/models.py:192</code></td><td>winner, rating, action, stop_loss, confidence</td><td>辩论裁判最终结论</td></tr>
+        <tr><td>策略 JSON</td><td><code>SAF/strategy_factory/out/</code></td><td>name, strategy_type, source_claims, signal code</td><td>SAF 批量评估输入单元</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>4.2 核心流程数据流</h3>
+
+  <h4>流程 1 — 实盘信号生命周期</h4>
+  <div class="flow">
+    <span class="node">[策略on_bar/定时回调]</span><br>
+    &nbsp;&nbsp;<span class="arrow">→</span> TradeSignal 产生<br>
+    &nbsp;&nbsp;<span class="arrow">→</span> event_bus.publish(<span class="node">EVENT_SIGNAL</span>, signal)<br>
+    &nbsp;&nbsp;<span class="arrow">→</span> <span class="fn-name">SignalProcessor._handle_signal()</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> confidence 检查（&lt; 0.5 → 拒绝）<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> executor.connected 检查（未连接 → 拒绝）<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">└─</span> risk_manager.check_signal(signal)<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">├─</span> [rejected] → <span class="node">EVENT_SIGNAL_REJECTED</span><br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="arrow">└─</span> [approved] → executor.order_stock() → <span class="node">EVENT_SIGNAL_VALIDATED</span>
+  </div>
+
+  <h4>流程 2 — SPS 波段监控单次 tick</h4>
+  <div class="flow">
+    <span class="node">[定时触发 / asyncio loop]</span><br>
+    &nbsp;&nbsp;<span class="arrow">→</span> <span class="fn-name">QuoteFetcher.fetch_a_quotes()</span> → Sina/AKShare 实时行情<br>
+    &nbsp;&nbsp;<span class="arrow">→</span> [for each stock] <span class="fn-name">db.get_or_refresh(code, limit=120)</span><br>
+    &nbsp;&nbsp;<span class="arrow">→</span> <span class="fn-name">asyncio.gather(engine.compute(history, rt_info))</span><br>
+    &nbsp;&nbsp;<span class="arrow">→</span> <span class="fn-name">_detect_transition()</span> → _TRANSITION_MAP 查表<br>
+    &nbsp;&nbsp;<span class="arrow">→</span> [状态变化] → 输出报警文字<br>
+    &nbsp;&nbsp;<span class="arrow">→</span> [每小时] <span class="fn-name">_save_snapshot()</span> → .wave_status_db.json
+  </div>
+
+  <h4>流程 3 — SAF 策略批量评估</h4>
+  <div class="flow">
+    <span class="node">[命令行启动]</span><br>
+    &nbsp;&nbsp;<span class="arrow">→</span> <span class="fn-name">discover_strategy_jsons()</span> → 扫描 *.json<br>
+    &nbsp;&nbsp;<span class="arrow">→</span> <span class="fn-name">load_data_gateway()</span> → qmt_remote / tdx_api → DataFrame<br>
+    &nbsp;&nbsp;<span class="arrow">→</span> [快筛] <span class="fn-name">fast_screen()</span> → 分类通过/跳过<br>
+    &nbsp;&nbsp;<span class="arrow">→</span> [并行] <span class="fn-name">SAFEngineAdapter.run()</span> → 引擎回测 → metrics<br>
+    &nbsp;&nbsp;<span class="arrow">→</span> <span class="fn-name">score_strategy()</span> → 6维评分<br>
+    &nbsp;&nbsp;<span class="arrow">→</span> <span class="fn-name">rank_strategies()</span> → 综合评分排名<br>
+    &nbsp;&nbsp;<span class="arrow">→</span> <span class="fn-name">generate_report()</span> → 评估报告 JSON
+  </div>
+
+  <hr>
+
+  <!-- Section 5: Q&A -->
+  <h2 id="qa">5. 补充问答</h2>
+
+  <h3 id="q1">Q1：StrategySpec JSON 各字段含义</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>字段</th><th>类型</th><th>定义</th></tr></thead>
+      <tbody>
+        <tr><td><code>strategy_id</code></td><td>str</td><td>全局唯一 ID，格式 str_xxx</td></tr>
+        <tr><td><code>kind</code></td><td>enum</td><td>策略拓扑：time_series / cross_sectional / pairs / intraday</td></tr>
+        <tr><td><code>entrypoint</code></td><td>str</td><td>Python 点分路径，Sandbox 据此动态 import</td></tr>
+        <tr><td><code>parameters</code></td><td>dict</td><td>从代码中提取的超参数</td></tr>
+        <tr><td><code>required_fields</code></td><td>list[str]</td><td>依赖的数据字段（如 ["close", "volume"]）</td></tr>
+        <tr><td><code>universe</code></td><td>enum</td><td>标的池类型：ETF / STOCK / FUTURES</td></tr>
+        <tr><td><code>data_frequency</code></td><td>enum</td><td>K 线粒度：daily / 1min / tick</td></tr>
+        <tr><td><code>tags</code></td><td>list[str]</td><td>语义标签，用于分类检索</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="q2">Q2：五大回测引擎的技术本质</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>引擎</th><th>数据结构</th><th>核心数学</th><th>持仓特征</th><th>状态</th></tr></thead>
+      <tbody>
+        <tr><td>TimeSeriesExecutionEngine</td><td>单标的 OHLCV DF</td><td>技术指标、统计</td><td>单品种顺序持仓</td><td><span class="badge badge-green">✅ 已实现</span></td></tr>
+        <tr><td>CrossSectionalEngine</td><td>dict[symbol→DF]</td><td>因子分析、IC/IR</td><td>多空截面组合</td><td><span class="badge badge-orange">🔜 规划中</span></td></tr>
+        <tr><td>PairsExecutionEngine</td><td>双标的 (df_a, df_b)</td><td>协整检验、均值回归</td><td>市场中性</td><td><span class="badge badge-orange">🔜 规划中</span></td></tr>
+        <tr><td>VnPyAdapterEngine</td><td>VnPy 原生对象</td><td>协议转换</td><td>依 VnPy 策略</td><td><span class="badge badge-red">❌ 存根</span></td></tr>
+        <tr><td>IntradayEngine</td><td>分钟/Tick DF</td><td>集合竞价、高频动量</td><td>日内强制平仓</td><td><span class="badge badge-orange">🔜 规划中</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="q3">Q3：6D 评分的实际水准与行业对标</h3>
+
+  <h4>淘汰门槛评价</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>条件</th><th>阈值</th><th>行业对标说明</th></tr></thead>
+      <tbody>
+        <tr><td>最大回撤 &gt; 40%</td><td>宽松</td><td>专业基金要求 ≤15%，允许腰斩前不淘汰</td></tr>
+        <tr><td>夏普 &lt; 0.3</td><td>最低生存线</td><td>沪深300长期 Sharpe ≈ 0.3-0.5</td></tr>
+        <tr><td>年化收益 &lt; 0%</td><td>极宽松</td><td>亏钱才淘汰，正收益不设下限</td></tr>
+        <tr><td>交易次数 &lt; 6</td><td>合理</td><td>防止过拟合幸存者</td></tr>
+        <tr><td>胜率 &lt; 20%</td><td>宽松</td><td>低胜率可通过高盈亏比弥补</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Tier 对应实际水准</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tier</th><th>总分</th><th>CAGR</th><th>Sharpe</th><th>MaxDD</th><th>现实对标</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge badge-green">S</span></td><td>≥85</td><td>≥20%+</td><td>≥1.8</td><td>≤15%</td><td>Renaissance Medallion 级别</td></tr>
+        <tr><td><span class="badge badge-blue">A</span></td><td>70-84</td><td>12%-20%</td><td>1.2-1.8</td><td>15%-25%</td><td>头部量化私募，<strong>实盘可部署</strong></td></tr>
+        <tr><td><span class="badge badge-orange">B</span></td><td>55-69</td><td>5%-12%</td><td>0.6-1.2</td><td>25%-35%</td><td>跑赢基准但 Alpha 不明显</td></tr>
+        <tr><td><span class="badge badge-red">C</span></td><td>&lt;55</td><td>勉强正</td><td>0.3-0.6</td><td>不限</td><td>通过淘汰门但评分低</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 id="q4">Q4：Stage1/2/3 三阶段筛选流水线与 6D 评分的关系</h3>
+  <div class="flow">
+    <span class="node">Stage1（可运行性/适配性）</span><br>
+    &nbsp;&nbsp;判定：tier != "failed"<br>
+    &nbsp;&nbsp;失败触发：signal_exception / no_signals / too_few_trades / signal_timeout<br><br>
+    <span class="node">Stage2（全局收益风控评分）</span> ← 6D 评分在此执行<br>
+    &nbsp;&nbsp;判定：tier != "eliminated"<br>
+    &nbsp;&nbsp;流程：check_elimination() → score_strategy_6d() → S/A/B/C/eliminated<br>
+    &nbsp;&nbsp;<strong>★ C 级也算通过！只要不被硬淘汰即可</strong><br><br>
+    <span class="node">Stage3（局部强势切片挖掘）</span> ← 从 Stage2 淘汰池中捞回<br>
+    &nbsp;&nbsp;对象：Stage2 中被 eliminated 的策略<br>
+    &nbsp;&nbsp;方法：score_scenario_slices()，用年度/牛熊市切片评分
+  </div>
+
+  <h4>实际通过率（741 策略全量跑）</h4>
+  <ul>
+    <li>Stage1：147/741（19.84%）← 主要卡在 <code>no_signals</code> + <code>signal_exception</code></li>
+    <li>Stage2：30/147（20.41%）← 主要卡在 <code>夏普比率低于0.3</code></li>
+    <li>Stage3：22 个局部候选从 117 个 eliminated 中识别</li>
+  </ul>
+
+  <h3 id="q5">Q5：评分标准是否偏高？真实通过率低的原因</h3>
+  <div class="card">
+    <h4>结论：评分标准不高，是输入策略质量差和场景不匹配导致低通过率</h4>
+    <p><strong>证据 1</strong> — 唯一通过 Stage2 的「RSRS择时结合PB-ROE」策略，2021-2024 连续三年亏损，靠 2025 年 +46.23% 才拉正全局 CAGR 到 15.61%，Sharpe 仅 0.48。这样的策略仍能 C 级通过，说明门槛不严。</p>
+    <p><strong>证据 2</strong> — Stage1 失败原因不是评分：<code>no_signals</code>（策略不产生信号）、<code>signal_exception</code>（抛异常）、<code>too_few_trades</code>（交易次数不足）。</p>
+    <p><strong>证据 3</strong> — 演进日志明确方向是「提升 Stage1 通过率（目标 30%+）」，而非降低 Stage2 评分标准。</p>
+  </div>
+
+  <h3 id="q6">Q6：配对交易策略失败根因与修复</h3>
+
+  <h4>失败表现</h4>
+  <p>评估结果：<code>status: failed</code>，<code>tier: failed</code>，所有测试标的报 <code>signal_func_error</code></p>
+
+  <h4>三层根因</h4>
+  <ol>
+    <li><strong>代码错误</strong>：<code>df['close'].iloc[:, 1]</code> — 单列 Series 无第二列，IndexingError</li>
+    <li><strong>路由错误</strong>：<code>kind</code> 应为 <code>pairs</code>，但被路由到 <code>TimeSeriesExecutionEngine</code></li>
+    <li><strong>参数失效</strong>：<code>beta=0.0567</code> 异常偏小（应为 1-4）；<code>p_mean/p_std</code> 为静态值</li>
+  </ol>
+
+  <h4>v2 修复版回测结果（601988 + 002048，2.77年）</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>指标</th><th>值</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>总收益率</td><td>14.97%</td><td></td></tr>
+        <tr><td>CAGR</td><td><strong>5.16%</strong></td><td>偏低但为正，可进 Stage2</td></tr>
+        <tr><td>MaxDD</td><td>19.52%</td><td>中等</td></tr>
+        <tr><td>Sharpe</td><td><strong>0.42</strong></td><td>超过 0.3 门槛，不被硬淘汰</td></tr>
+        <tr><td>估计 Beta</td><td>0.0543</td><td>两股价格量级不匹配，非理想配对</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>修复核心代码对比</h4>
+  <pre><code><span class="cmt"># v1 原始（❌ 报错）</span>
+<span class="kw">def</span> <span class="fn">generate_signals</span>(df):
+    portf = df[<span class="str">'close'</span>].iloc[:, <span class="num">0</span>] - beta * df[<span class="str">'close'</span>].iloc[:, <span class="num">1</span>]
+
+<span class="cmt"># v2 修复（✅ 正常运行）</span>
+<span class="kw">def</span> <span class="fn">generate_signals</span>(df_a, df_b, config=<span class="kw">None</span>):
+    <span class="cmt"># 动态 OLS 估计 beta</span>
+    beta = _estimate_beta_ols(close_a.iloc[:train_days], close_b.iloc[:train_days])
+    spread = close_a - beta * close_b
+    <span class="cmt"># 滚动窗口 z-score</span>
+    zscore = _rolling_zscore(spread, roll_window=<span class="num">60</span>)
+    signal[zscore &lt; <span class="num">-1.5</span>] = <span class="num">1</span>
+    signal[zscore &gt; <span class="num">+1.5</span>] = <span class="num">-1</span>
+    <span class="kw">return</span> signal</code></pre>
+
+  <h3 id="q7">Q7：策略库的可运行性问题</h3>
+
+  <h4>7.1 问题定性：95/95 个原始策略在本地无法直接运行</h4>
+  <p>全部来自聚宽（JoinQuant）平台，依赖聚宽沙箱运行时环境：</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>依赖类型</th><th>涉及文件数</th><th>代表性 API</th></tr></thead>
+      <tbody>
+        <tr><td><code>from jqdata</code></td><td><strong>95/95</strong></td><td>平台运行时基础</td></tr>
+        <tr><td><code>from jqfactor</code> / <code>get_factor_values()</code></td><td><strong>58/95</strong></td><td>聚宽私有因子库</td></tr>
+        <tr><td><code>get_fundamentals()</code> / <code>query()</code></td><td><strong>59/95</strong></td><td>财务数据接口</td></tr>
+        <tr><td><code>get_index_stocks()</code></td><td><strong>77/95</strong></td><td>指数成分股</td></tr>
+        <tr><td><code>read_file()</code> + <code>pickle.loads()</code></td><td><strong>6/95</strong></td><td>预训练模型文件</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>7.2 项目现有应对措施</h4>
+  <p><code>SAF/tss/jq_compat_runtime.py</code>（2343 行）构建 <code>JQCompatRuntime</code> 模拟聚宽平台接口：</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>接口类别</th><th>具体方法</th><th>数据来源</th></tr></thead>
+      <tbody>
+        <tr><td>行情核心</td><td><code>get_price()</code>, <code>history()</code></td><td>qdata.DataService → AkShare → SQLite</td></tr>
+        <tr><td>技术指标</td><td><code>MA()</code>, <code>MACD()</code>, <code>KDJ()</code></td><td>基于行情数据本地计算</td></tr>
+        <tr><td>调度注册</td><td><code>run_daily()</code>, <code>run_weekly()</code></td><td>本地调度模拟</td></tr>
+        <tr><td>下单接口</td><td><code>order()</code>, <code>order_target()</code></td><td>本地撮合模拟</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>7.3 数据缺口详细清单</h4>
+
+  <div class="card">
+    <h4>缺口 1：<code>get_fundamentals()</code> — 财务数据全部为随机伪造值</h4>
+    <p>通过 SHA1 哈希生成伪随机数，PE/PB/ROE/EPS 等指标全为噪声，59 个策略结果无参考价值。</p>
+  </div>
+
+  <div class="card">
+    <h4>缺口 2：<code>get_factor_values()</code> — jqfactor 因子全部为随机值</h4>
+    <p>100+ 个因子返回 <code>[-1, 1]</code> 随机数，58 个策略信号由随机噪声驱动。</p>
+  </div>
+
+  <div class="card">
+    <h4>缺口 3：<code>get_index_stocks()</code> — 成分股不区分指数</h4>
+    <p>无论传入什么指数代码，返回整个 <code>universe_symbols</code>，77 个策略选股范围与设计预期完全不同。</p>
+  </div>
+
+  <h4>7.5 修补路径与工作量评估</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>优先级</th><th>缺口</th><th>破坏面</th><th>估计工作量</th></tr></thead>
+      <tbody>
+        <tr><td>①</td><td><code>get_index_stocks()</code> 真实成分股</td><td>77 个策略</td><td>2-3 天</td></tr>
+        <tr><td>②</td><td><code>get_fundamentals()</code> 对接真实数据</td><td>59 个策略</td><td>1-2 周</td></tr>
+        <tr><td>③</td><td><code>get_factor_values()</code> 因子实现</td><td>58 个策略</td><td>1-2 月</td></tr>
+        <tr><td>④</td><td>预训练模型文件</td><td>6 个策略</td><td>按策略评估</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <strong>当前实际可执行基线</strong>：已被 SAF pipeline 提取为 JSON 格式的 17 个策略（含 <code>pure_alpha_function</code> 字段），已剥离平台依赖，结合 <code>jq_compat_runtime.py</code> 的行情接口可执行回测，是目前唯一可信的测试入口。
+  </div>
+
+</main>
+
+</body>
+</html>

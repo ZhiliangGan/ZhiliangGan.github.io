@@ -2,24 +2,24 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
   xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
-    <loc>http://localhost:50281/about/</loc>
+    <loc>https://jamesgan.com/about/</loc>
     <lastmod>2026-04-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:50281/posts/hello-world/</loc>
+    <loc>https://jamesgan.com/posts/hello-world/</loc>
     <lastmod>2026-04-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:50281/</loc>
+    <loc>https://jamesgan.com/</loc>
     <lastmod>2026-04-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:50281/posts/</loc>
+    <loc>https://jamesgan.com/posts/</loc>
     <lastmod>2026-04-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:50281/tags/</loc>
+    <loc>https://jamesgan.com/tags/</loc>
     <lastmod>2026-04-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:50281/tags/welcome/</loc>
+    <loc>https://jamesgan.com/tags/welcome/</loc>
     <lastmod>2026-04-15T00:00:00+00:00</lastmod>
   </url><url>
-    <loc>http://localhost:50281/categories/</loc>
+    <loc>https://jamesgan.com/categories/</loc>
   </url>
 </urlset>
