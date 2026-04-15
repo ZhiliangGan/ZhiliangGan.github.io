@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <meta name="robots" content="index, follow">
-<title>James Gan</title>
+<title>Enjoy your life! Let&#39;s Claude!</title>
 <meta name="keywords" content="">
 <meta name="description" content="SAF 重构迁移方案
 日期: 2026-04-13
@@ -205,8 +205,8 @@ Phase 4: 清理 legacy/ 目录
     }
 
 </script><meta property="og:url" content="https://www.ganyiming.top/qmt/saf_migration_plan_20260413/">
-  <meta property="og:site_name" content="James Gan">
-  <meta property="og:title" content="James Gan">
+  <meta property="og:site_name" content="Enjoy your life! Let&#39;s Claude!">
+  <meta property="og:title" content="Enjoy your life! Let&#39;s Claude!">
   <meta property="og:description" content="SAF 重构迁移方案 日期: 2026-04-13 目标: 将 SAF 提升到与 StrategeFactoryFlow/TSS 并列层次，废弃两者中与 SAF 重叠的部分 范围: StrategeFactoryFlow, TSS, SAF 三个项目的回测/数据/评估层
 1. 当前架构状态 1.1 三个项目现状 qmt/ ├── SAF/ # 新共享内核（重构骨架） │ ├── src/saf/ │ │ ├── capability/ # ✅ 策略能力检测 │ │ ├── data/ # ⚠️ 框架完成，实现缺失 │ │ ├── engine/ # ⚠️ 框架完成，时序实现待补全 │ │ ├── evaluation/ # ⚠️ 框架完成，评分实现缺失 │ │ ├── models/ # ✅ 强类型对象模型 │ │ ├── orchestrator/ # ✅ 编排层框架 │ │ ├── storage/ # ✅ 接口定义 │ │ └── strategy/ # ✅ 策略解析器 │ └── tests/ │ ├── StrategeFactoryFlow/ # 策略工厂（待迁移/废弃） │ ├── evaluate/ │ │ ├── engine.py # ❌ 与 SAF engine 重复 → 废弃 │ │ ├── fast_screen_policy.py # ✅ 保留（SAF 暂无对应） │ │ └── scorer.py # ⚠️ 与 SAF evaluation 重复 → 迁移/废弃 │ ├── run_evaluate.py # ✅ 保留（批量编排） │ └── pipeline/ # ⚠️ 部分迁移 │ └── tss/ # 策略运营（待迁移/废弃） ├── data_loader.py # ❌ 与 SAF data 重复 → 废弃 ├── run_*_comparison.py # ⚠️ 保留（多策略对比） ├── vnpy_backtest_runner.py # ⚠️ SAF vnpy_adapter 替代 └── ... 1.2 SAF 能力 vs 现有实现 (2026-04-13 更新) 模块 SAF 现状 StrategeFactoryFlow TSS 结论 策略拓扑检测 ✅ 完整 ✅ 完整 ❌ 无 SAF 优，废弃 SFF FailureCode ✅ 完整 ❌ 散落字符串 ❌ 无 SAF 优，废弃 SFF 对象模型 ✅ 完整 ❌ pd.DataFrame ❌ 无 SAF 优 时序回测引擎 ✅ 完整 ✅ 完整 ⚠️ 简单实现 SAF 已可替代 SFF 截面回测引擎 ✅ 完整 ✅ 完整 ❌ 无 SAF 已可替代 SFF 配对回测引擎 ⚠️ 骨架定义 ❌ 无 ❌ 无 SAF 框架已定义，实现待补 vnpy 适配器 ⚠️ 骨架定义 ❌ 无 ✅ 完整 迁移到 SAF vnpy_adapter 数据加载 ⚠️ 协议定义 ❌ 直接用 DataService ✅ 完整 迁移 data_loader 到 SAF 评分系统 ⚠️ 简化版 ✅ 6维评分 ❌ 无 迁移 6维到 SAF evaluation 编排/批量 ✅ 框架完整 ✅ 完整 ⚠️ 脚本 SAF orchestrator 已可替代 快筛重试 ❌ 无 ✅ 完整 ❌ 无 SFF 保留或迁移到 SAF 2. 迁移原则 2.1 三不原则 不删除代码：所有待废弃代码移入 legacy/ 目录，保留历史 不中断开发：迁移期间现有流水线照常运行 不破坏接口：SAF 接口先稳定再对接 2.2 迁移顺序 Phase 1: 稳固 SAF 内核（共享层先完成） Phase 2: 废弃 StrategeFactoryFlow 中对应模块 Phase 3: 废弃 TSS 中对应模块 Phase 4: 清理 legacy/ 目录 3. 完整迁移方案 3.1 Phase 1: 稳固 SAF 内核 ✅ 已完成 (2026-04-13) 目标: 补全 SAF 中缺失的关键实现，使其能够承接废弃模块">
   <meta property="og:locale" content="en_us">
@@ -214,7 +214,7 @@ Phase 4: 清理 legacy/ 目录
     <meta property="article:section" content="qmt">
 
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="James Gan">
+  <meta name="twitter:title" content="Enjoy your life! Let&#39;s Claude!">
   <meta name="twitter:description" content="SAF 重构迁移方案 日期: 2026-04-13 目标: 将 SAF 提升到与 StrategeFactoryFlow/TSS 并列层次，废弃两者中与 SAF 重叠的部分 范围: StrategeFactoryFlow, TSS, SAF 三个项目的回测/数据/评估层
 1. 当前架构状态 1.1 三个项目现状 qmt/ ├── SAF/ # 新共享内核（重构骨架） │ ├── src/saf/ │ │ ├── capability/ # ✅ 策略能力检测 │ │ ├── data/ # ⚠️ 框架完成，实现缺失 │ │ ├── engine/ # ⚠️ 框架完成，时序实现待补全 │ │ ├── evaluation/ # ⚠️ 框架完成，评分实现缺失 │ │ ├── models/ # ✅ 强类型对象模型 │ │ ├── orchestrator/ # ✅ 编排层框架 │ │ ├── storage/ # ✅ 接口定义 │ │ └── strategy/ # ✅ 策略解析器 │ └── tests/ │ ├── StrategeFactoryFlow/ # 策略工厂（待迁移/废弃） │ ├── evaluate/ │ │ ├── engine.py # ❌ 与 SAF engine 重复 → 废弃 │ │ ├── fast_screen_policy.py # ✅ 保留（SAF 暂无对应） │ │ └── scorer.py # ⚠️ 与 SAF evaluation 重复 → 迁移/废弃 │ ├── run_evaluate.py # ✅ 保留（批量编排） │ └── pipeline/ # ⚠️ 部分迁移 │ └── tss/ # 策略运营（待迁移/废弃） ├── data_loader.py # ❌ 与 SAF data 重复 → 废弃 ├── run_*_comparison.py # ⚠️ 保留（多策略对比） ├── vnpy_backtest_runner.py # ⚠️ SAF vnpy_adapter 替代 └── ... 1.2 SAF 能力 vs 现有实现 (2026-04-13 更新) 模块 SAF 现状 StrategeFactoryFlow TSS 结论 策略拓扑检测 ✅ 完整 ✅ 完整 ❌ 无 SAF 优，废弃 SFF FailureCode ✅ 完整 ❌ 散落字符串 ❌ 无 SAF 优，废弃 SFF 对象模型 ✅ 完整 ❌ pd.DataFrame ❌ 无 SAF 优 时序回测引擎 ✅ 完整 ✅ 完整 ⚠️ 简单实现 SAF 已可替代 SFF 截面回测引擎 ✅ 完整 ✅ 完整 ❌ 无 SAF 已可替代 SFF 配对回测引擎 ⚠️ 骨架定义 ❌ 无 ❌ 无 SAF 框架已定义，实现待补 vnpy 适配器 ⚠️ 骨架定义 ❌ 无 ✅ 完整 迁移到 SAF vnpy_adapter 数据加载 ⚠️ 协议定义 ❌ 直接用 DataService ✅ 完整 迁移 data_loader 到 SAF 评分系统 ⚠️ 简化版 ✅ 6维评分 ❌ 无 迁移 6维到 SAF evaluation 编排/批量 ✅ 框架完整 ✅ 完整 ⚠️ 脚本 SAF orchestrator 已可替代 快筛重试 ❌ 无 ✅ 完整 ❌ 无 SFF 保留或迁移到 SAF 2. 迁移原则 2.1 三不原则 不删除代码：所有待废弃代码移入 legacy/ 目录，保留历史 不中断开发：迁移期间现有流水线照常运行 不破坏接口：SAF 接口先稳定再对接 2.2 迁移顺序 Phase 1: 稳固 SAF 内核（共享层先完成） Phase 2: 废弃 StrategeFactoryFlow 中对应模块 Phase 3: 废弃 TSS 中对应模块 Phase 4: 清理 legacy/ 目录 3. 完整迁移方案 3.1 Phase 1: 稳固 SAF 内核 ✅ 已完成 (2026-04-13) 目标: 补全 SAF 中缺失的关键实现，使其能够承接废弃模块">
 
@@ -264,7 +264,7 @@ Phase 4: 清理 legacy/ 目录
   },
   "publisher": {
     "@type": "Organization",
-    "name": "James Gan",
+    "name": "Enjoy your life! Let's Claude!",
     "logo": {
       "@type": "ImageObject",
       "url": "https://www.ganyiming.top/favicon.ico"
@@ -277,7 +277,7 @@ Phase 4: 清理 legacy/ 目录
     <header class="header">
     <nav class="header-nav">
         <div class="logo">
-            <a href="https://www.ganyiming.top/" accesskey="h" title="James Gan (Alt + H)">James Gan</a>
+            <a href="https://www.ganyiming.top/" accesskey="h" title="Enjoy your life! Let&#39;s Claude! (Alt + H)">Enjoy your life! Let&#39;s Claude!</a>
             <div class="logo-switches">
                 <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
                     <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
@@ -1275,7 +1275,7 @@ Phase 4: 清理 ← 依赖 Phase 2, 3 完成
     </main>
     
 <footer class="footer">
-        <span>&copy; 2026 <a href="https://www.ganyiming.top/">James Gan</a></span> · 
+        <span>&copy; 2026 <a href="https://www.ganyiming.top/">Enjoy your life! Let&#39;s Claude!</a></span> · 
 
     <span>
         Powered by

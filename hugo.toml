@@ -1,6 +1,6 @@
 baseURL = 'https://www.ganyiming.top/'
 locale = 'en-us'
-title = 'James Gan'
+title = "Enjoy your life! Let's Claude!"
 theme = 'PaperMod'
 
 [params]
