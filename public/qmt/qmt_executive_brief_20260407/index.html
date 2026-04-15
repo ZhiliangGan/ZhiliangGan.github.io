@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>James Gan</title>
+<meta name="keywords" content="">
+<meta name="description" content="QMT 系统管理层摘要
+
+日期: 2026-04-07
+适用对象: 老板、新同事、非核心开发成员
+命名说明: 对外简称采用 QTS；当前代码目录仍为 qss/
+
+1. 一句话总结
+QMT 不是单一策略程序，而是一套围绕量化交易建立的工作平台。它已经形成了“数据底座 &#43; 标的筛选 &#43; 策略研究 &#43; 交易执行 &#43; 监控推送”的完整闭环雏形。
+2. 四个核心子系统分别做什么
+QTS
+QTS (Quantitative Trading System) 是交易执行主系统。
+它负责把策略信号真正落到交易闭环，包括:
+
+策略在线运行
+风控校验
+委托执行
+持仓/资产状态管理
+API 与运行态对外暴露
+
+简单说，QTS 负责“做”。
+SPS
+SPS (Strategy Push System) 是监控推送系统。
+它负责盘中状态观察、信号变化提醒和消息推送，重点是“监控”和“告警”，不是交易执行。
+简单说，SPS 负责“看”，而且是 只推不交易。
+TSS
+TSS (Trading Strategy Search) 是策略研究与回测系统。
+它负责策略搜索、历史回测、参数比较和策略验证，输出的是研究结论，而不是实盘执行动作。
+简单说，TSS 负责“试”。
+ITS
+ITS (Investment Target Selection) 是投资标的筛选与评审系统。
+它负责从全市场中筛选候选标的，并通过多维评审给出优先级和结论。它输出的是候选池和评审报告，而不是直接下单。
+简单说，ITS 负责“挑”。
+3. 整体关系如何理解
+可以用一句话概括这套体系:">
+<meta name="author" content="James Gan">
+<link rel="canonical" href="https://jamesgan.com/qmt/qmt_executive_brief_20260407/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.47e51c7d8489b002361bac156ce9a0a8776d08c5462c2cee95801efafdd90d35.css" integrity="sha256-R&#43;UcfYSJsAI2G6wVbOmgqHdtCMVGLCzulYAe&#43;v3ZDTU=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://jamesgan.com/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://jamesgan.com/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://jamesgan.com/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://jamesgan.com/apple-touch-icon.png">
+<link rel="mask-icon" href="https://jamesgan.com/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://jamesgan.com/qmt/qmt_executive_brief_20260407/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://jamesgan.com/qmt/qmt_executive_brief_20260407/">
+  <meta property="og:site_name" content="James Gan">
+  <meta property="og:title" content="James Gan">
+  <meta property="og:description" content="QMT 系统管理层摘要 日期: 2026-04-07 适用对象: 老板、新同事、非核心开发成员 命名说明: 对外简称采用 QTS；当前代码目录仍为 qss/
+1. 一句话总结 QMT 不是单一策略程序，而是一套围绕量化交易建立的工作平台。它已经形成了“数据底座 &#43; 标的筛选 &#43; 策略研究 &#43; 交易执行 &#43; 监控推送”的完整闭环雏形。
+2. 四个核心子系统分别做什么 QTS QTS (Quantitative Trading System) 是交易执行主系统。
+它负责把策略信号真正落到交易闭环，包括:
+策略在线运行 风控校验 委托执行 持仓/资产状态管理 API 与运行态对外暴露 简单说，QTS 负责“做”。
+SPS SPS (Strategy Push System) 是监控推送系统。
+它负责盘中状态观察、信号变化提醒和消息推送，重点是“监控”和“告警”，不是交易执行。
+简单说，SPS 负责“看”，而且是 只推不交易。
+TSS TSS (Trading Strategy Search) 是策略研究与回测系统。
+它负责策略搜索、历史回测、参数比较和策略验证，输出的是研究结论，而不是实盘执行动作。
+简单说，TSS 负责“试”。
+ITS ITS (Investment Target Selection) 是投资标的筛选与评审系统。
+它负责从全市场中筛选候选标的，并通过多维评审给出优先级和结论。它输出的是候选池和评审报告，而不是直接下单。
+简单说，ITS 负责“挑”。
+3. 整体关系如何理解 可以用一句话概括这套体系:">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="qmt">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="James Gan">
+  <meta name="twitter:description" content="QMT 系统管理层摘要 日期: 2026-04-07 适用对象: 老板、新同事、非核心开发成员 命名说明: 对外简称采用 QTS；当前代码目录仍为 qss/
+1. 一句话总结 QMT 不是单一策略程序，而是一套围绕量化交易建立的工作平台。它已经形成了“数据底座 &#43; 标的筛选 &#43; 策略研究 &#43; 交易执行 &#43; 监控推送”的完整闭环雏形。
+2. 四个核心子系统分别做什么 QTS QTS (Quantitative Trading System) 是交易执行主系统。
+它负责把策略信号真正落到交易闭环，包括:
+策略在线运行 风控校验 委托执行 持仓/资产状态管理 API 与运行态对外暴露 简单说，QTS 负责“做”。
+SPS SPS (Strategy Push System) 是监控推送系统。
+它负责盘中状态观察、信号变化提醒和消息推送，重点是“监控”和“告警”，不是交易执行。
+简单说，SPS 负责“看”，而且是 只推不交易。
+TSS TSS (Trading Strategy Search) 是策略研究与回测系统。
+它负责策略搜索、历史回测、参数比较和策略验证，输出的是研究结论，而不是实盘执行动作。
+简单说，TSS 负责“试”。
+ITS ITS (Investment Target Selection) 是投资标的筛选与评审系统。
+它负责从全市场中筛选候选标的，并通过多维评审给出优先级和结论。它输出的是候选池和评审报告，而不是直接下单。
+简单说，ITS 负责“挑”。
+3. 整体关系如何理解 可以用一句话概括这套体系:">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Qmts",
+      "item": "https://jamesgan.com/qmt/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "",
+      "item": "https://jamesgan.com/qmt/qmt_executive_brief_20260407/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "",
+  "name": "",
+  "description": "QMT 系统管理层摘要 日期: 2026-04-07 适用对象: 老板、新同事、非核心开发成员 命名说明: 对外简称采用 QTS；当前代码目录仍为 qss/\n1. 一句话总结 QMT 不是单一策略程序，而是一套围绕量化交易建立的工作平台。它已经形成了“数据底座 + 标的筛选 + 策略研究 + 交易执行 + 监控推送”的完整闭环雏形。\n2. 四个核心子系统分别做什么 QTS QTS (Quantitative Trading System) 是交易执行主系统。\n它负责把策略信号真正落到交易闭环，包括:\n策略在线运行 风控校验 委托执行 持仓/资产状态管理 API 与运行态对外暴露 简单说，QTS 负责“做”。\nSPS SPS (Strategy Push System) 是监控推送系统。\n它负责盘中状态观察、信号变化提醒和消息推送，重点是“监控”和“告警”，不是交易执行。\n简单说，SPS 负责“看”，而且是 只推不交易。\nTSS TSS (Trading Strategy Search) 是策略研究与回测系统。\n它负责策略搜索、历史回测、参数比较和策略验证，输出的是研究结论，而不是实盘执行动作。\n简单说，TSS 负责“试”。\nITS ITS (Investment Target Selection) 是投资标的筛选与评审系统。\n它负责从全市场中筛选候选标的，并通过多维评审给出优先级和结论。它输出的是候选池和评审报告，而不是直接下单。\n简单说，ITS 负责“挑”。\n3. 整体关系如何理解 可以用一句话概括这套体系:\n",
+  "keywords": [
+    
+  ],
+  "articleBody": "QMT 系统管理层摘要 日期: 2026-04-07 适用对象: 老板、新同事、非核心开发成员 命名说明: 对外简称采用 QTS；当前代码目录仍为 qss/\n1. 一句话总结 QMT 不是单一策略程序，而是一套围绕量化交易建立的工作平台。它已经形成了“数据底座 + 标的筛选 + 策略研究 + 交易执行 + 监控推送”的完整闭环雏形。\n2. 四个核心子系统分别做什么 QTS QTS (Quantitative Trading System) 是交易执行主系统。\n它负责把策略信号真正落到交易闭环，包括:\n策略在线运行 风控校验 委托执行 持仓/资产状态管理 API 与运行态对外暴露 简单说，QTS 负责“做”。\nSPS SPS (Strategy Push System) 是监控推送系统。\n它负责盘中状态观察、信号变化提醒和消息推送，重点是“监控”和“告警”，不是交易执行。\n简单说，SPS 负责“看”，而且是 只推不交易。\nTSS TSS (Trading Strategy Search) 是策略研究与回测系统。\n它负责策略搜索、历史回测、参数比较和策略验证，输出的是研究结论，而不是实盘执行动作。\n简单说，TSS 负责“试”。\nITS ITS (Investment Target Selection) 是投资标的筛选与评审系统。\n它负责从全市场中筛选候选标的，并通过多维评审给出优先级和结论。它输出的是候选池和评审报告，而不是直接下单。\n简单说，ITS 负责“挑”。\n3. 整体关系如何理解 可以用一句话概括这套体系:\nqdata 提供数据底座，ITS 负责挑标的，TSS 负责试策略，QTS 负责真执行，SPS 负责把结果推出来。\n如果换成管理语言:\nqdata 是底层基础设施 ITS 是投前筛选 TSS 是策略实验室 QTS 是执行中枢 SPS 是监控与对外告警层 4. 当前系统的成熟度判断 已经具备的平台能力 已有统一数据底座，多个模块共用 已有交易执行主链路，具备事件驱动结构 已有监控与推送能力，可支撑盘中观察 已有策略研究和回测区域，可持续迭代策略 已有 AI 评审和候选池机制，具备智能增强能力 仍在演进中的部分 对外命名和代码目录命名尚未完全统一 代码包边界仍有历史遗留，需要进一步规范 ITS 输出到 QTS / SPS 的消费规则还在固化，候选池接口尚未完全标准化 Windows QMT 执行环境与 Mac/Linux 研究环境仍在逐步拆分中 5. 为什么这套架构值得继续投入 从业务角度看，它解决的是三个关键问题:\n1. 把“研究”和“执行”分开了 很多量化项目会把策略试验、盘中监控和实盘执行混成一团，导致一改研究逻辑就影响交易稳定性。QMT 当前已经开始把这几层拆开，这对稳定性很重要。\n2. 把“看”和“做”分开了 ITS 和 SPS 负责看，QTS 负责做。职责清楚以后，后续扩 AI、扩筛选器、扩提醒方式，都不会直接污染交易主链路。\n3. 已经具备平台化基础，而不是脚本堆砌 虽然仓库里还有历史命名和结构遗留，但从代码实际形态看，它已经不是“很多脚本拼在一起”，而是一个有明确主干的数据-研究-执行平台雏形。\n6. 管理层最该关注的下一步 如果站在投入产出比角度，下一步最值得做的不是再加一个策略，而是继续收敛架构。\n优先级建议如下:\n统一对外命名与文档口径 固化 QTS / SPS / TSS / ITS 的职责边界 逐步推进“研究侧”和“执行侧”的部署拆分 把 ITS 输出沉淀为分层候选池与稳定接口，供 QTS / SPS 按场景消费 7. 建议的管理层表述 如果你需要对外一句话介绍这套系统，推荐直接这样说:\nQMT 是一套面向量化交易的工作平台，底层有统一数据系统，上层分为标的筛选、策略研究、交易执行和监控推送四个子系统，当前已经具备平台雏形，下一阶段重点是架构收敛与执行侧稳定化。\n",
+  "wordCount" : "156",
+  "inLanguage": "en",
+  "datePublished": "0001-01-01T00:00:00Z",
+  "dateModified": "0001-01-01T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "James Gan"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://jamesgan.com/qmt/qmt_executive_brief_20260407/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "James Gan",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://jamesgan.com/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://jamesgan.com/" accesskey="h" title="James Gan (Alt + H)">James Gan</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="https://jamesgan.com/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://jamesgan.com/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://jamesgan.com/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://jamesgan.com/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      
+    </h1>
+    <div class="post-meta"><span>James Gan</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="qmt-系统管理层摘要">QMT 系统管理层摘要<a hidden class="anchor" aria-hidden="true" href="#qmt-系统管理层摘要">#</a></h1>
+<blockquote>
+<p>日期: 2026-04-07
+适用对象: 老板、新同事、非核心开发成员
+命名说明: 对外简称采用 <strong>QTS</strong>；当前代码目录仍为 <code>qss/</code></p>
+</blockquote>
+<h2 id="1-一句话总结">1. 一句话总结<a hidden class="anchor" aria-hidden="true" href="#1-一句话总结">#</a></h2>
+<p>QMT 不是单一策略程序，而是一套围绕量化交易建立的工作平台。它已经形成了“数据底座 + 标的筛选 + 策略研究 + 交易执行 + 监控推送”的完整闭环雏形。</p>
+<h2 id="2-四个核心子系统分别做什么">2. 四个核心子系统分别做什么<a hidden class="anchor" aria-hidden="true" href="#2-四个核心子系统分别做什么">#</a></h2>
+<h3 id="qts">QTS<a hidden class="anchor" aria-hidden="true" href="#qts">#</a></h3>
+<p><strong>QTS (Quantitative Trading System)</strong> 是交易执行主系统。</p>
+<p>它负责把策略信号真正落到交易闭环，包括:</p>
+<ul>
+<li>策略在线运行</li>
+<li>风控校验</li>
+<li>委托执行</li>
+<li>持仓/资产状态管理</li>
+<li>API 与运行态对外暴露</li>
+</ul>
+<p>简单说，QTS 负责“做”。</p>
+<h3 id="sps">SPS<a hidden class="anchor" aria-hidden="true" href="#sps">#</a></h3>
+<p><strong>SPS (Strategy Push System)</strong> 是监控推送系统。</p>
+<p>它负责盘中状态观察、信号变化提醒和消息推送，重点是“监控”和“告警”，不是交易执行。</p>
+<p>简单说，SPS 负责“看”，而且是 <strong>只推不交易</strong>。</p>
+<h3 id="tss">TSS<a hidden class="anchor" aria-hidden="true" href="#tss">#</a></h3>
+<p><strong>TSS (Trading Strategy Search)</strong> 是策略研究与回测系统。</p>
+<p>它负责策略搜索、历史回测、参数比较和策略验证，输出的是研究结论，而不是实盘执行动作。</p>
+<p>简单说，TSS 负责“试”。</p>
+<h3 id="its">ITS<a hidden class="anchor" aria-hidden="true" href="#its">#</a></h3>
+<p><strong>ITS (Investment Target Selection)</strong> 是投资标的筛选与评审系统。</p>
+<p>它负责从全市场中筛选候选标的，并通过多维评审给出优先级和结论。它输出的是候选池和评审报告，而不是直接下单。</p>
+<p>简单说，ITS 负责“挑”。</p>
+<h2 id="3-整体关系如何理解">3. 整体关系如何理解<a hidden class="anchor" aria-hidden="true" href="#3-整体关系如何理解">#</a></h2>
+<p>可以用一句话概括这套体系:</p>
+<p><code>qdata 提供数据底座，ITS 负责挑标的，TSS 负责试策略，QTS 负责真执行，SPS 负责把结果推出来。</code></p>
+<p>如果换成管理语言:</p>
+<ul>
+<li><code>qdata</code> 是底层基础设施</li>
+<li><code>ITS</code> 是投前筛选</li>
+<li><code>TSS</code> 是策略实验室</li>
+<li><code>QTS</code> 是执行中枢</li>
+<li><code>SPS</code> 是监控与对外告警层</li>
+</ul>
+<h2 id="4-当前系统的成熟度判断">4. 当前系统的成熟度判断<a hidden class="anchor" aria-hidden="true" href="#4-当前系统的成熟度判断">#</a></h2>
+<h3 id="已经具备的平台能力">已经具备的平台能力<a hidden class="anchor" aria-hidden="true" href="#已经具备的平台能力">#</a></h3>
+<ul>
+<li>已有统一数据底座，多个模块共用</li>
+<li>已有交易执行主链路，具备事件驱动结构</li>
+<li>已有监控与推送能力，可支撑盘中观察</li>
+<li>已有策略研究和回测区域，可持续迭代策略</li>
+<li>已有 AI 评审和候选池机制，具备智能增强能力</li>
+</ul>
+<h3 id="仍在演进中的部分">仍在演进中的部分<a hidden class="anchor" aria-hidden="true" href="#仍在演进中的部分">#</a></h3>
+<ul>
+<li>对外命名和代码目录命名尚未完全统一</li>
+<li>代码包边界仍有历史遗留，需要进一步规范</li>
+<li>ITS 输出到 QTS / SPS 的消费规则还在固化，候选池接口尚未完全标准化</li>
+<li>Windows QMT 执行环境与 Mac/Linux 研究环境仍在逐步拆分中</li>
+</ul>
+<h2 id="5-为什么这套架构值得继续投入">5. 为什么这套架构值得继续投入<a hidden class="anchor" aria-hidden="true" href="#5-为什么这套架构值得继续投入">#</a></h2>
+<p>从业务角度看，它解决的是三个关键问题:</p>
+<h3 id="1-把研究和执行分开了">1. 把“研究”和“执行”分开了<a hidden class="anchor" aria-hidden="true" href="#1-把研究和执行分开了">#</a></h3>
+<p>很多量化项目会把策略试验、盘中监控和实盘执行混成一团，导致一改研究逻辑就影响交易稳定性。QMT 当前已经开始把这几层拆开，这对稳定性很重要。</p>
+<h3 id="2-把看和做分开了">2. 把“看”和“做”分开了<a hidden class="anchor" aria-hidden="true" href="#2-把看和做分开了">#</a></h3>
+<p>ITS 和 SPS 负责看，QTS 负责做。职责清楚以后，后续扩 AI、扩筛选器、扩提醒方式，都不会直接污染交易主链路。</p>
+<h3 id="3-已经具备平台化基础而不是脚本堆砌">3. 已经具备平台化基础，而不是脚本堆砌<a hidden class="anchor" aria-hidden="true" href="#3-已经具备平台化基础而不是脚本堆砌">#</a></h3>
+<p>虽然仓库里还有历史命名和结构遗留，但从代码实际形态看，它已经不是“很多脚本拼在一起”，而是一个有明确主干的数据-研究-执行平台雏形。</p>
+<h2 id="6-管理层最该关注的下一步">6. 管理层最该关注的下一步<a hidden class="anchor" aria-hidden="true" href="#6-管理层最该关注的下一步">#</a></h2>
+<p>如果站在投入产出比角度，下一步最值得做的不是再加一个策略，而是继续收敛架构。</p>
+<p>优先级建议如下:</p>
+<ol>
+<li>统一对外命名与文档口径</li>
+<li>固化 QTS / SPS / TSS / ITS 的职责边界</li>
+<li>逐步推进“研究侧”和“执行侧”的部署拆分</li>
+<li>把 ITS 输出沉淀为分层候选池与稳定接口，供 QTS / SPS 按场景消费</li>
+</ol>
+<h2 id="7-建议的管理层表述">7. 建议的管理层表述<a hidden class="anchor" aria-hidden="true" href="#7-建议的管理层表述">#</a></h2>
+<p>如果你需要对外一句话介绍这套系统，推荐直接这样说:</p>
+<blockquote>
+<p>QMT 是一套面向量化交易的工作平台，底层有统一数据系统，上层分为标的筛选、策略研究、交易执行和监控推送四个子系统，当前已经具备平台雏形，下一阶段重点是架构收敛与执行侧稳定化。</p>
+</blockquote>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://jamesgan.com/">James Gan</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>James Gan</title>
+<meta name="keywords" content="">
+<meta name="description" content="QMT Detailed Runtime Flow
+
+时间: 2026-04-07
+目的: 画清楚 ITS / QTS / SPS / TSS / qdata / scheduler 的详细运行流程
+说明: 本文分为两部分
+
+当前代码真实运行流程
+推荐演进后的分层池消费流程
+
+
+1. 当前代码真实运行流程
+1.1 运行说明
+当前仓库里，最稳定、最清晰的主流程是:
+
+夜间由 scheduler.py 拉起 nightly_screener.py
+nightly_screener.py 从种子池读取股票列表
+ITS 用技术过滤 &#43; AI 辩论筛出可关注标的
+结果写入 config/golden_pool.yaml
+次日 scheduler.py 拉起 qss/main.py
+QTS 加载配置、数据源、执行器、风控和策略后进入交易时段运行
+SPS 当前是相对独立的盘中监控链路，更多消费自己的 watchlist，而不是统一消费 ITS 分层池
+
+1.2 详细运行流程图
+flowchart TD
+    subgraph Time0[&#34;夜间研究与洗池&#34;]
+        A1[&#34;scheduler.py&lt;br/&gt;01:00 定时触发&#34;] --&gt; A2[&#34;job_run_nightly_screener()&#34;]
+        A2 --&gt; A3[&#34;scripts/jobs/nightly_screener.py&#34;]
+        A3 --&gt; A4[&#34;读取 config/pools/zxg_a_share_pool.csv&lt;br/&gt;种子股票池&#34;]
+        A3 --&gt; A5[&#34;ConfigManager.load()&lt;br/&gt;日志 / 配置初始化&#34;]
+        A3 --&gt; A6[&#34;DataFeed(settings)&lt;br/&gt;经 qdata / xtdata / CSV 获取日线&#34;]
+        A3 --&gt; A7[&#34;AIClient&lt;br/&gt;LLM 客户端&#34;]
+        A4 --&gt; A8[&#34;遍历股票&#34;]
+        A6 --&gt; A8
+        A7 --&gt; A8
+        A8 --&gt; A9[&#34;ITS.StockScreener.screen_symbol()&#34;]
+        A9 --&gt; A10[&#34;IndicatorEngine&lt;br/&gt;趋势过滤 / 择时过滤&#34;]
+        A10 --&gt; A11{&#34;技术过滤通过?&#34;}
+        A11 -- 否 --&gt; A12[&#34;skip_reason&lt;br/&gt;淘汰&#34;]
+        A11 -- 是 --&gt; A13[&#34;DebateContextBuilder&lt;br/&gt;组装技术/价格/持仓上下文&#34;]
+        A13 --&gt; A14[&#34;DebateEngine.run_debate()&#34;]
+        A14 --&gt; A15[&#34;debate_to_signal()&lt;br/&gt;生成 BUY / HOLD / SELL 等信号&#34;]
+        A15 --&gt; A16{&#34;action in BUY/STRONG_BUY?&#34;}
+        A16 -- 否 --&gt; A17[&#34;不入池&#34;]
+        A16 -- 是 --&gt; A18[&#34;写入 golden_symbols[]&lt;br/&gt;symbol / name / confidence / risk / logic&#34;]
+        A18 --&gt; A19[&#34;save_golden_pool()&#34;]
+        A19 --&gt; A20[&#34;config/golden_pool.yaml&#34;]
+    end
+
+    subgraph Time1[&#34;盘前调度&#34;]
+        B1[&#34;scheduler.py&lt;br/&gt;09:25 定时触发&#34;] --&gt; B2[&#34;job_start_qss_engine()&#34;]
+        B2 --&gt; B3[&#34;subprocess 启动 qss/main.py&#34;]
+    end
+
+    subgraph Time2[&#34;QTS 交易主链路&#34;]
+        C1[&#34;qss/main.py&#34;] --&gt; C2[&#34;ConfigManager.load()&#34;]
+        C2 --&gt; C3[&#34;DataFeed(settings)&lt;br/&gt;可接 qdata / xtdata&#34;]
+        C2 --&gt; C4[&#34;create_executor()&lt;br/&gt;QMTExecutor 或 SimulatedExecutor&#34;]
+        C4 --&gt; C5[&#34;ExecutorPortfolioAdapter&#34;]
+        C5 --&gt; C6[&#34;RiskManager&#34;]
+        C4 --&gt; C7[&#34;SignalProcessor.start()&#34;]
+        C2 --&gt; C8[&#34;create_strategy()&lt;br/&gt;按 settings.strategies 装载策略&#34;]
+        C8 --&gt; C9[&#34;strategy.start()&#34;]
+        C2 --&gt; C10[&#34;NotificationBridge.start()&#34;]
+        C2 --&gt; C11[&#34;FastAPI init_state / uvicorn&#34;]
+        C1 --&gt; C12[&#34;进入阻塞运行 while True&#34;]
+        C3 --&gt; C8
+        C6 --&gt; C7
+        C8 --&gt; C7
+        C7 --&gt; C13[&#34;风控检查 / 订单路由 / 执行&#34;]
+        C13 --&gt; C14[&#34;QMT 实盘下单 或 模拟执行&#34;]
+    end
+
+    subgraph Time3[&#34;SPS 独立盘中监控链路&#34;]
+        D1[&#34;sps/wave_monitor.py&#34;] --&gt; D2[&#34;读取 .watchlist_a.json&#34;]
+        D1 --&gt; D3[&#34;QuoteFetcher&lt;br/&gt;QMT xtdata 或 Sina&#34;]
+        D1 --&gt; D4[&#34;HistoryDataManager&#34;]
+        D3 --&gt; D5[&#34;实时行情&#34;]
+        D4 --&gt; D6[&#34;历史K线&#34;]
+        D5 --&gt; D7[&#34;WaveComputeEngine&lt;br/&gt;V7.1 Titan 向量计算&#34;]
+        D6 --&gt; D7
+        D7 --&gt; D8[&#34;状态机 / 变化检测 / 告警格式化&#34;]
+        D8 --&gt; D9[&#34;控制台 / 持久化 / 推送&#34;]
+    end
+
+    subgraph Time4[&#34;TSS 研究与回测链路&#34;]
+        E1[&#34;TSS runner / backtest&#34;] --&gt; E2[&#34;更宽研究池 / 自定义 universe&#34;]
+        E2 --&gt; E3[&#34;qdata / CSV / yfinance / vn.py&#34;]
+        E3 --&gt; E4[&#34;回测结果 / 对比报告&#34;]
+    end
+
+    A20 -. 次日作为候选输入 .-&gt; C8
+    A20 -. 当前也可供其他模块读取 .-&gt; D2
+    C3 --&gt;|&#34;统一数据入口&#34;| E3
+2. 当前流程的关键结论
+
+当前最明确的“日切换”主线是 scheduler -&gt; nightly_screener -&gt; golden_pool.yaml -&gt; qss/main.py
+ITS 已经承担了夜间评审和洗池职责
+QTS 是唯一真正承担执行闭环的系统
+SPS 目前更像并行监控服务，还没有完全切到统一的 ITS 输出契约
+TSS 保留更宽研究池是合理的，不必被 ITS 完全约束
+
+3. 推荐演进后的详细运行流程
+3.1 演进目标
+你前面提的方向我认可，推荐把 ITS 定义为“分层池生产者”，而不是“强耦合驱动所有下游”的控制中心。">
+<meta name="author" content="James Gan">
+<link rel="canonical" href="https://jamesgan.com/qmt/qmt_detailed_runtime_flow_20260407/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.47e51c7d8489b002361bac156ce9a0a8776d08c5462c2cee95801efafdd90d35.css" integrity="sha256-R&#43;UcfYSJsAI2G6wVbOmgqHdtCMVGLCzulYAe&#43;v3ZDTU=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://jamesgan.com/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://jamesgan.com/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://jamesgan.com/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://jamesgan.com/apple-touch-icon.png">
+<link rel="mask-icon" href="https://jamesgan.com/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://jamesgan.com/qmt/qmt_detailed_runtime_flow_20260407/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://jamesgan.com/qmt/qmt_detailed_runtime_flow_20260407/">
+  <meta property="og:site_name" content="James Gan">
+  <meta property="og:title" content="James Gan">
+  <meta property="og:description" content="QMT Detailed Runtime Flow 时间: 2026-04-07 目的: 画清楚 ITS / QTS / SPS / TSS / qdata / scheduler 的详细运行流程 说明: 本文分为两部分
+当前代码真实运行流程 推荐演进后的分层池消费流程 1. 当前代码真实运行流程 1.1 运行说明 当前仓库里，最稳定、最清晰的主流程是:
+夜间由 scheduler.py 拉起 nightly_screener.py nightly_screener.py 从种子池读取股票列表 ITS 用技术过滤 &#43; AI 辩论筛出可关注标的 结果写入 config/golden_pool.yaml 次日 scheduler.py 拉起 qss/main.py QTS 加载配置、数据源、执行器、风控和策略后进入交易时段运行 SPS 当前是相对独立的盘中监控链路，更多消费自己的 watchlist，而不是统一消费 ITS 分层池 1.2 详细运行流程图 flowchart TD subgraph Time0[&#34;夜间研究与洗池&#34;] A1[&#34;scheduler.py&lt;br/&gt;01:00 定时触发&#34;] --&gt; A2[&#34;job_run_nightly_screener()&#34;] A2 --&gt; A3[&#34;scripts/jobs/nightly_screener.py&#34;] A3 --&gt; A4[&#34;读取 config/pools/zxg_a_share_pool.csv&lt;br/&gt;种子股票池&#34;] A3 --&gt; A5[&#34;ConfigManager.load()&lt;br/&gt;日志 / 配置初始化&#34;] A3 --&gt; A6[&#34;DataFeed(settings)&lt;br/&gt;经 qdata / xtdata / CSV 获取日线&#34;] A3 --&gt; A7[&#34;AIClient&lt;br/&gt;LLM 客户端&#34;] A4 --&gt; A8[&#34;遍历股票&#34;] A6 --&gt; A8 A7 --&gt; A8 A8 --&gt; A9[&#34;ITS.StockScreener.screen_symbol()&#34;] A9 --&gt; A10[&#34;IndicatorEngine&lt;br/&gt;趋势过滤 / 择时过滤&#34;] A10 --&gt; A11{&#34;技术过滤通过?&#34;} A11 -- 否 --&gt; A12[&#34;skip_reason&lt;br/&gt;淘汰&#34;] A11 -- 是 --&gt; A13[&#34;DebateContextBuilder&lt;br/&gt;组装技术/价格/持仓上下文&#34;] A13 --&gt; A14[&#34;DebateEngine.run_debate()&#34;] A14 --&gt; A15[&#34;debate_to_signal()&lt;br/&gt;生成 BUY / HOLD / SELL 等信号&#34;] A15 --&gt; A16{&#34;action in BUY/STRONG_BUY?&#34;} A16 -- 否 --&gt; A17[&#34;不入池&#34;] A16 -- 是 --&gt; A18[&#34;写入 golden_symbols[]&lt;br/&gt;symbol / name / confidence / risk / logic&#34;] A18 --&gt; A19[&#34;save_golden_pool()&#34;] A19 --&gt; A20[&#34;config/golden_pool.yaml&#34;] end subgraph Time1[&#34;盘前调度&#34;] B1[&#34;scheduler.py&lt;br/&gt;09:25 定时触发&#34;] --&gt; B2[&#34;job_start_qss_engine()&#34;] B2 --&gt; B3[&#34;subprocess 启动 qss/main.py&#34;] end subgraph Time2[&#34;QTS 交易主链路&#34;] C1[&#34;qss/main.py&#34;] --&gt; C2[&#34;ConfigManager.load()&#34;] C2 --&gt; C3[&#34;DataFeed(settings)&lt;br/&gt;可接 qdata / xtdata&#34;] C2 --&gt; C4[&#34;create_executor()&lt;br/&gt;QMTExecutor 或 SimulatedExecutor&#34;] C4 --&gt; C5[&#34;ExecutorPortfolioAdapter&#34;] C5 --&gt; C6[&#34;RiskManager&#34;] C4 --&gt; C7[&#34;SignalProcessor.start()&#34;] C2 --&gt; C8[&#34;create_strategy()&lt;br/&gt;按 settings.strategies 装载策略&#34;] C8 --&gt; C9[&#34;strategy.start()&#34;] C2 --&gt; C10[&#34;NotificationBridge.start()&#34;] C2 --&gt; C11[&#34;FastAPI init_state / uvicorn&#34;] C1 --&gt; C12[&#34;进入阻塞运行 while True&#34;] C3 --&gt; C8 C6 --&gt; C7 C8 --&gt; C7 C7 --&gt; C13[&#34;风控检查 / 订单路由 / 执行&#34;] C13 --&gt; C14[&#34;QMT 实盘下单 或 模拟执行&#34;] end subgraph Time3[&#34;SPS 独立盘中监控链路&#34;] D1[&#34;sps/wave_monitor.py&#34;] --&gt; D2[&#34;读取 .watchlist_a.json&#34;] D1 --&gt; D3[&#34;QuoteFetcher&lt;br/&gt;QMT xtdata 或 Sina&#34;] D1 --&gt; D4[&#34;HistoryDataManager&#34;] D3 --&gt; D5[&#34;实时行情&#34;] D4 --&gt; D6[&#34;历史K线&#34;] D5 --&gt; D7[&#34;WaveComputeEngine&lt;br/&gt;V7.1 Titan 向量计算&#34;] D6 --&gt; D7 D7 --&gt; D8[&#34;状态机 / 变化检测 / 告警格式化&#34;] D8 --&gt; D9[&#34;控制台 / 持久化 / 推送&#34;] end subgraph Time4[&#34;TSS 研究与回测链路&#34;] E1[&#34;TSS runner / backtest&#34;] --&gt; E2[&#34;更宽研究池 / 自定义 universe&#34;] E2 --&gt; E3[&#34;qdata / CSV / yfinance / vn.py&#34;] E3 --&gt; E4[&#34;回测结果 / 对比报告&#34;] end A20 -. 次日作为候选输入 .-&gt; C8 A20 -. 当前也可供其他模块读取 .-&gt; D2 C3 --&gt;|&#34;统一数据入口&#34;| E3 2. 当前流程的关键结论 当前最明确的“日切换”主线是 scheduler -&gt; nightly_screener -&gt; golden_pool.yaml -&gt; qss/main.py ITS 已经承担了夜间评审和洗池职责 QTS 是唯一真正承担执行闭环的系统 SPS 目前更像并行监控服务，还没有完全切到统一的 ITS 输出契约 TSS 保留更宽研究池是合理的，不必被 ITS 完全约束 3. 推荐演进后的详细运行流程 3.1 演进目标 你前面提的方向我认可，推荐把 ITS 定义为“分层池生产者”，而不是“强耦合驱动所有下游”的控制中心。">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="qmt">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="James Gan">
+  <meta name="twitter:description" content="QMT Detailed Runtime Flow 时间: 2026-04-07 目的: 画清楚 ITS / QTS / SPS / TSS / qdata / scheduler 的详细运行流程 说明: 本文分为两部分
+当前代码真实运行流程 推荐演进后的分层池消费流程 1. 当前代码真实运行流程 1.1 运行说明 当前仓库里，最稳定、最清晰的主流程是:
+夜间由 scheduler.py 拉起 nightly_screener.py nightly_screener.py 从种子池读取股票列表 ITS 用技术过滤 &#43; AI 辩论筛出可关注标的 结果写入 config/golden_pool.yaml 次日 scheduler.py 拉起 qss/main.py QTS 加载配置、数据源、执行器、风控和策略后进入交易时段运行 SPS 当前是相对独立的盘中监控链路，更多消费自己的 watchlist，而不是统一消费 ITS 分层池 1.2 详细运行流程图 flowchart TD subgraph Time0[&#34;夜间研究与洗池&#34;] A1[&#34;scheduler.py&lt;br/&gt;01:00 定时触发&#34;] --&gt; A2[&#34;job_run_nightly_screener()&#34;] A2 --&gt; A3[&#34;scripts/jobs/nightly_screener.py&#34;] A3 --&gt; A4[&#34;读取 config/pools/zxg_a_share_pool.csv&lt;br/&gt;种子股票池&#34;] A3 --&gt; A5[&#34;ConfigManager.load()&lt;br/&gt;日志 / 配置初始化&#34;] A3 --&gt; A6[&#34;DataFeed(settings)&lt;br/&gt;经 qdata / xtdata / CSV 获取日线&#34;] A3 --&gt; A7[&#34;AIClient&lt;br/&gt;LLM 客户端&#34;] A4 --&gt; A8[&#34;遍历股票&#34;] A6 --&gt; A8 A7 --&gt; A8 A8 --&gt; A9[&#34;ITS.StockScreener.screen_symbol()&#34;] A9 --&gt; A10[&#34;IndicatorEngine&lt;br/&gt;趋势过滤 / 择时过滤&#34;] A10 --&gt; A11{&#34;技术过滤通过?&#34;} A11 -- 否 --&gt; A12[&#34;skip_reason&lt;br/&gt;淘汰&#34;] A11 -- 是 --&gt; A13[&#34;DebateContextBuilder&lt;br/&gt;组装技术/价格/持仓上下文&#34;] A13 --&gt; A14[&#34;DebateEngine.run_debate()&#34;] A14 --&gt; A15[&#34;debate_to_signal()&lt;br/&gt;生成 BUY / HOLD / SELL 等信号&#34;] A15 --&gt; A16{&#34;action in BUY/STRONG_BUY?&#34;} A16 -- 否 --&gt; A17[&#34;不入池&#34;] A16 -- 是 --&gt; A18[&#34;写入 golden_symbols[]&lt;br/&gt;symbol / name / confidence / risk / logic&#34;] A18 --&gt; A19[&#34;save_golden_pool()&#34;] A19 --&gt; A20[&#34;config/golden_pool.yaml&#34;] end subgraph Time1[&#34;盘前调度&#34;] B1[&#34;scheduler.py&lt;br/&gt;09:25 定时触发&#34;] --&gt; B2[&#34;job_start_qss_engine()&#34;] B2 --&gt; B3[&#34;subprocess 启动 qss/main.py&#34;] end subgraph Time2[&#34;QTS 交易主链路&#34;] C1[&#34;qss/main.py&#34;] --&gt; C2[&#34;ConfigManager.load()&#34;] C2 --&gt; C3[&#34;DataFeed(settings)&lt;br/&gt;可接 qdata / xtdata&#34;] C2 --&gt; C4[&#34;create_executor()&lt;br/&gt;QMTExecutor 或 SimulatedExecutor&#34;] C4 --&gt; C5[&#34;ExecutorPortfolioAdapter&#34;] C5 --&gt; C6[&#34;RiskManager&#34;] C4 --&gt; C7[&#34;SignalProcessor.start()&#34;] C2 --&gt; C8[&#34;create_strategy()&lt;br/&gt;按 settings.strategies 装载策略&#34;] C8 --&gt; C9[&#34;strategy.start()&#34;] C2 --&gt; C10[&#34;NotificationBridge.start()&#34;] C2 --&gt; C11[&#34;FastAPI init_state / uvicorn&#34;] C1 --&gt; C12[&#34;进入阻塞运行 while True&#34;] C3 --&gt; C8 C6 --&gt; C7 C8 --&gt; C7 C7 --&gt; C13[&#34;风控检查 / 订单路由 / 执行&#34;] C13 --&gt; C14[&#34;QMT 实盘下单 或 模拟执行&#34;] end subgraph Time3[&#34;SPS 独立盘中监控链路&#34;] D1[&#34;sps/wave_monitor.py&#34;] --&gt; D2[&#34;读取 .watchlist_a.json&#34;] D1 --&gt; D3[&#34;QuoteFetcher&lt;br/&gt;QMT xtdata 或 Sina&#34;] D1 --&gt; D4[&#34;HistoryDataManager&#34;] D3 --&gt; D5[&#34;实时行情&#34;] D4 --&gt; D6[&#34;历史K线&#34;] D5 --&gt; D7[&#34;WaveComputeEngine&lt;br/&gt;V7.1 Titan 向量计算&#34;] D6 --&gt; D7 D7 --&gt; D8[&#34;状态机 / 变化检测 / 告警格式化&#34;] D8 --&gt; D9[&#34;控制台 / 持久化 / 推送&#34;] end subgraph Time4[&#34;TSS 研究与回测链路&#34;] E1[&#34;TSS runner / backtest&#34;] --&gt; E2[&#34;更宽研究池 / 自定义 universe&#34;] E2 --&gt; E3[&#34;qdata / CSV / yfinance / vn.py&#34;] E3 --&gt; E4[&#34;回测结果 / 对比报告&#34;] end A20 -. 次日作为候选输入 .-&gt; C8 A20 -. 当前也可供其他模块读取 .-&gt; D2 C3 --&gt;|&#34;统一数据入口&#34;| E3 2. 当前流程的关键结论 当前最明确的“日切换”主线是 scheduler -&gt; nightly_screener -&gt; golden_pool.yaml -&gt; qss/main.py ITS 已经承担了夜间评审和洗池职责 QTS 是唯一真正承担执行闭环的系统 SPS 目前更像并行监控服务，还没有完全切到统一的 ITS 输出契约 TSS 保留更宽研究池是合理的，不必被 ITS 完全约束 3. 推荐演进后的详细运行流程 3.1 演进目标 你前面提的方向我认可，推荐把 ITS 定义为“分层池生产者”，而不是“强耦合驱动所有下游”的控制中心。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Qmts",
+      "item": "https://jamesgan.com/qmt/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "",
+      "item": "https://jamesgan.com/qmt/qmt_detailed_runtime_flow_20260407/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "",
+  "name": "",
+  "description": "QMT Detailed Runtime Flow 时间: 2026-04-07 目的: 画清楚 ITS / QTS / SPS / TSS / qdata / scheduler 的详细运行流程 说明: 本文分为两部分\n当前代码真实运行流程 推荐演进后的分层池消费流程 1. 当前代码真实运行流程 1.1 运行说明 当前仓库里，最稳定、最清晰的主流程是:\n夜间由 scheduler.py 拉起 nightly_screener.py nightly_screener.py 从种子池读取股票列表 ITS 用技术过滤 + AI 辩论筛出可关注标的 结果写入 config/golden_pool.yaml 次日 scheduler.py 拉起 qss/main.py QTS 加载配置、数据源、执行器、风控和策略后进入交易时段运行 SPS 当前是相对独立的盘中监控链路，更多消费自己的 watchlist，而不是统一消费 ITS 分层池 1.2 详细运行流程图 flowchart TD subgraph Time0[\u0026#34;夜间研究与洗池\u0026#34;] A1[\u0026#34;scheduler.py\u0026lt;br/\u0026gt;01:00 定时触发\u0026#34;] --\u0026gt; A2[\u0026#34;job_run_nightly_screener()\u0026#34;] A2 --\u0026gt; A3[\u0026#34;scripts/jobs/nightly_screener.py\u0026#34;] A3 --\u0026gt; A4[\u0026#34;读取 config/pools/zxg_a_share_pool.csv\u0026lt;br/\u0026gt;种子股票池\u0026#34;] A3 --\u0026gt; A5[\u0026#34;ConfigManager.load()\u0026lt;br/\u0026gt;日志 / 配置初始化\u0026#34;] A3 --\u0026gt; A6[\u0026#34;DataFeed(settings)\u0026lt;br/\u0026gt;经 qdata / xtdata / CSV 获取日线\u0026#34;] A3 --\u0026gt; A7[\u0026#34;AIClient\u0026lt;br/\u0026gt;LLM 客户端\u0026#34;] A4 --\u0026gt; A8[\u0026#34;遍历股票\u0026#34;] A6 --\u0026gt; A8 A7 --\u0026gt; A8 A8 --\u0026gt; A9[\u0026#34;ITS.StockScreener.screen_symbol()\u0026#34;] A9 --\u0026gt; A10[\u0026#34;IndicatorEngine\u0026lt;br/\u0026gt;趋势过滤 / 择时过滤\u0026#34;] A10 --\u0026gt; A11{\u0026#34;技术过滤通过?\u0026#34;} A11 -- 否 --\u0026gt; A12[\u0026#34;skip_reason\u0026lt;br/\u0026gt;淘汰\u0026#34;] A11 -- 是 --\u0026gt; A13[\u0026#34;DebateContextBuilder\u0026lt;br/\u0026gt;组装技术/价格/持仓上下文\u0026#34;] A13 --\u0026gt; A14[\u0026#34;DebateEngine.run_debate()\u0026#34;] A14 --\u0026gt; A15[\u0026#34;debate_to_signal()\u0026lt;br/\u0026gt;生成 BUY / HOLD / SELL 等信号\u0026#34;] A15 --\u0026gt; A16{\u0026#34;action in BUY/STRONG_BUY?\u0026#34;} A16 -- 否 --\u0026gt; A17[\u0026#34;不入池\u0026#34;] A16 -- 是 --\u0026gt; A18[\u0026#34;写入 golden_symbols[]\u0026lt;br/\u0026gt;symbol / name / confidence / risk / logic\u0026#34;] A18 --\u0026gt; A19[\u0026#34;save_golden_pool()\u0026#34;] A19 --\u0026gt; A20[\u0026#34;config/golden_pool.yaml\u0026#34;] end subgraph Time1[\u0026#34;盘前调度\u0026#34;] B1[\u0026#34;scheduler.py\u0026lt;br/\u0026gt;09:25 定时触发\u0026#34;] --\u0026gt; B2[\u0026#34;job_start_qss_engine()\u0026#34;] B2 --\u0026gt; B3[\u0026#34;subprocess 启动 qss/main.py\u0026#34;] end subgraph Time2[\u0026#34;QTS 交易主链路\u0026#34;] C1[\u0026#34;qss/main.py\u0026#34;] --\u0026gt; C2[\u0026#34;ConfigManager.load()\u0026#34;] C2 --\u0026gt; C3[\u0026#34;DataFeed(settings)\u0026lt;br/\u0026gt;可接 qdata / xtdata\u0026#34;] C2 --\u0026gt; C4[\u0026#34;create_executor()\u0026lt;br/\u0026gt;QMTExecutor 或 SimulatedExecutor\u0026#34;] C4 --\u0026gt; C5[\u0026#34;ExecutorPortfolioAdapter\u0026#34;] C5 --\u0026gt; C6[\u0026#34;RiskManager\u0026#34;] C4 --\u0026gt; C7[\u0026#34;SignalProcessor.start()\u0026#34;] C2 --\u0026gt; C8[\u0026#34;create_strategy()\u0026lt;br/\u0026gt;按 settings.strategies 装载策略\u0026#34;] C8 --\u0026gt; C9[\u0026#34;strategy.start()\u0026#34;] C2 --\u0026gt; C10[\u0026#34;NotificationBridge.start()\u0026#34;] C2 --\u0026gt; C11[\u0026#34;FastAPI init_state / uvicorn\u0026#34;] C1 --\u0026gt; C12[\u0026#34;进入阻塞运行 while True\u0026#34;] C3 --\u0026gt; C8 C6 --\u0026gt; C7 C8 --\u0026gt; C7 C7 --\u0026gt; C13[\u0026#34;风控检查 / 订单路由 / 执行\u0026#34;] C13 --\u0026gt; C14[\u0026#34;QMT 实盘下单 或 模拟执行\u0026#34;] end subgraph Time3[\u0026#34;SPS 独立盘中监控链路\u0026#34;] D1[\u0026#34;sps/wave_monitor.py\u0026#34;] --\u0026gt; D2[\u0026#34;读取 .watchlist_a.json\u0026#34;] D1 --\u0026gt; D3[\u0026#34;QuoteFetcher\u0026lt;br/\u0026gt;QMT xtdata 或 Sina\u0026#34;] D1 --\u0026gt; D4[\u0026#34;HistoryDataManager\u0026#34;] D3 --\u0026gt; D5[\u0026#34;实时行情\u0026#34;] D4 --\u0026gt; D6[\u0026#34;历史K线\u0026#34;] D5 --\u0026gt; D7[\u0026#34;WaveComputeEngine\u0026lt;br/\u0026gt;V7.1 Titan 向量计算\u0026#34;] D6 --\u0026gt; D7 D7 --\u0026gt; D8[\u0026#34;状态机 / 变化检测 / 告警格式化\u0026#34;] D8 --\u0026gt; D9[\u0026#34;控制台 / 持久化 / 推送\u0026#34;] end subgraph Time4[\u0026#34;TSS 研究与回测链路\u0026#34;] E1[\u0026#34;TSS runner / backtest\u0026#34;] --\u0026gt; E2[\u0026#34;更宽研究池 / 自定义 universe\u0026#34;] E2 --\u0026gt; E3[\u0026#34;qdata / CSV / yfinance / vn.py\u0026#34;] E3 --\u0026gt; E4[\u0026#34;回测结果 / 对比报告\u0026#34;] end A20 -. 次日作为候选输入 .-\u0026gt; C8 A20 -. 当前也可供其他模块读取 .-\u0026gt; D2 C3 --\u0026gt;|\u0026#34;统一数据入口\u0026#34;| E3 2. 当前流程的关键结论 当前最明确的“日切换”主线是 scheduler -\u0026gt; nightly_screener -\u0026gt; golden_pool.yaml -\u0026gt; qss/main.py ITS 已经承担了夜间评审和洗池职责 QTS 是唯一真正承担执行闭环的系统 SPS 目前更像并行监控服务，还没有完全切到统一的 ITS 输出契约 TSS 保留更宽研究池是合理的，不必被 ITS 完全约束 3. 推荐演进后的详细运行流程 3.1 演进目标 你前面提的方向我认可，推荐把 ITS 定义为“分层池生产者”，而不是“强耦合驱动所有下游”的控制中心。\n",
+  "keywords": [
+    
+  ],
+  "articleBody": "QMT Detailed Runtime Flow 时间: 2026-04-07 目的: 画清楚 ITS / QTS / SPS / TSS / qdata / scheduler 的详细运行流程 说明: 本文分为两部分\n当前代码真实运行流程 推荐演进后的分层池消费流程 1. 当前代码真实运行流程 1.1 运行说明 当前仓库里，最稳定、最清晰的主流程是:\n夜间由 scheduler.py 拉起 nightly_screener.py nightly_screener.py 从种子池读取股票列表 ITS 用技术过滤 + AI 辩论筛出可关注标的 结果写入 config/golden_pool.yaml 次日 scheduler.py 拉起 qss/main.py QTS 加载配置、数据源、执行器、风控和策略后进入交易时段运行 SPS 当前是相对独立的盘中监控链路，更多消费自己的 watchlist，而不是统一消费 ITS 分层池 1.2 详细运行流程图 flowchart TD subgraph Time0[\"夜间研究与洗池\"] A1[\"scheduler.py01:00 定时触发\"] --\u003e A2[\"job_run_nightly_screener()\"] A2 --\u003e A3[\"scripts/jobs/nightly_screener.py\"] A3 --\u003e A4[\"读取 config/pools/zxg_a_share_pool.csv种子股票池\"] A3 --\u003e A5[\"ConfigManager.load()日志 / 配置初始化\"] A3 --\u003e A6[\"DataFeed(settings)经 qdata / xtdata / CSV 获取日线\"] A3 --\u003e A7[\"AIClientLLM 客户端\"] A4 --\u003e A8[\"遍历股票\"] A6 --\u003e A8 A7 --\u003e A8 A8 --\u003e A9[\"ITS.StockScreener.screen_symbol()\"] A9 --\u003e A10[\"IndicatorEngine趋势过滤 / 择时过滤\"] A10 --\u003e A11{\"技术过滤通过?\"} A11 -- 否 --\u003e A12[\"skip_reason淘汰\"] A11 -- 是 --\u003e A13[\"DebateContextBuilder组装技术/价格/持仓上下文\"] A13 --\u003e A14[\"DebateEngine.run_debate()\"] A14 --\u003e A15[\"debate_to_signal()生成 BUY / HOLD / SELL 等信号\"] A15 --\u003e A16{\"action in BUY/STRONG_BUY?\"} A16 -- 否 --\u003e A17[\"不入池\"] A16 -- 是 --\u003e A18[\"写入 golden_symbols[]symbol / name / confidence / risk / logic\"] A18 --\u003e A19[\"save_golden_pool()\"] A19 --\u003e A20[\"config/golden_pool.yaml\"] end subgraph Time1[\"盘前调度\"] B1[\"scheduler.py09:25 定时触发\"] --\u003e B2[\"job_start_qss_engine()\"] B2 --\u003e B3[\"subprocess 启动 qss/main.py\"] end subgraph Time2[\"QTS 交易主链路\"] C1[\"qss/main.py\"] --\u003e C2[\"ConfigManager.load()\"] C2 --\u003e C3[\"DataFeed(settings)可接 qdata / xtdata\"] C2 --\u003e C4[\"create_executor()QMTExecutor 或 SimulatedExecutor\"] C4 --\u003e C5[\"ExecutorPortfolioAdapter\"] C5 --\u003e C6[\"RiskManager\"] C4 --\u003e C7[\"SignalProcessor.start()\"] C2 --\u003e C8[\"create_strategy()按 settings.strategies 装载策略\"] C8 --\u003e C9[\"strategy.start()\"] C2 --\u003e C10[\"NotificationBridge.start()\"] C2 --\u003e C11[\"FastAPI init_state / uvicorn\"] C1 --\u003e C12[\"进入阻塞运行 while True\"] C3 --\u003e C8 C6 --\u003e C7 C8 --\u003e C7 C7 --\u003e C13[\"风控检查 / 订单路由 / 执行\"] C13 --\u003e C14[\"QMT 实盘下单 或 模拟执行\"] end subgraph Time3[\"SPS 独立盘中监控链路\"] D1[\"sps/wave_monitor.py\"] --\u003e D2[\"读取 .watchlist_a.json\"] D1 --\u003e D3[\"QuoteFetcherQMT xtdata 或 Sina\"] D1 --\u003e D4[\"HistoryDataManager\"] D3 --\u003e D5[\"实时行情\"] D4 --\u003e D6[\"历史K线\"] D5 --\u003e D7[\"WaveComputeEngineV7.1 Titan 向量计算\"] D6 --\u003e D7 D7 --\u003e D8[\"状态机 / 变化检测 / 告警格式化\"] D8 --\u003e D9[\"控制台 / 持久化 / 推送\"] end subgraph Time4[\"TSS 研究与回测链路\"] E1[\"TSS runner / backtest\"] --\u003e E2[\"更宽研究池 / 自定义 universe\"] E2 --\u003e E3[\"qdata / CSV / yfinance / vn.py\"] E3 --\u003e E4[\"回测结果 / 对比报告\"] end A20 -. 次日作为候选输入 .-\u003e C8 A20 -. 当前也可供其他模块读取 .-\u003e D2 C3 --\u003e|\"统一数据入口\"| E3 2. 当前流程的关键结论 当前最明确的“日切换”主线是 scheduler -\u003e nightly_screener -\u003e golden_pool.yaml -\u003e qss/main.py ITS 已经承担了夜间评审和洗池职责 QTS 是唯一真正承担执行闭环的系统 SPS 目前更像并行监控服务，还没有完全切到统一的 ITS 输出契约 TSS 保留更宽研究池是合理的，不必被 ITS 完全约束 3. 推荐演进后的详细运行流程 3.1 演进目标 你前面提的方向我认可，推荐把 ITS 定义为“分层池生产者”，而不是“强耦合驱动所有下游”的控制中心。\n也就是说:\nITS 负责评审和分层 QTS 负责执行 SPS 负责监控和推送 TSS 负责研究和回测 真正需要统一的是“池对象”和“消费契约”。\n3.2 推荐分层池消费流程图 flowchart TD F1[\"种子池 / 外部候选来源watchlist / 自选池 / 主题池 / 事件池\"] --\u003e F2[\"ITS 评审入口\"] F2 --\u003e F3[\"技术过滤趋势 / 择时 / 风险前置筛选\"] F3 --\u003e F4[\"多视角辩论technical / fundamental / sentiment / arbiter\"] F4 --\u003e F5[\"ITS Memory历史评审结果 / lesson / 命中率反馈\"] F5 --\u003e F6[\"分层池生成器\"] F6 --\u003e G1[\"research_universe研究全集\"] F6 --\u003e G2[\"reviewed_pool已评审候选池\"] F6 --\u003e G3[\"monitor_pool重点监控池\"] F6 --\u003e G4[\"investable_top20可投资池\"] F6 --\u003e G5[\"execution_top5执行池\"] G1 --\u003e H1[\"TSS 消费策略搜索 / 样本外回测 / 参数比较\"] G2 --\u003e H2[\"人工复核 / 投研复盘\"] G3 --\u003e H3[\"SPS 消费盘中波段监控 / 告警推送\"] G4 --\u003e H4[\"QTS 候选输入策略可见 universe\"] G5 --\u003e H5[\"QTS 高优先级执行池\"] H4 --\u003e I1[\"QTS 策略层\"] H5 --\u003e I1 I1 --\u003e I2[\"SignalProcessor\"] I2 --\u003e I3[\"RiskManager\"] I3 --\u003e I4[\"ExecutorQMT / Simulated\"] H3 --\u003e J1[\"实时行情 + 历史K线\"] J1 --\u003e J2[\"WaveComputeEngine\"] J2 --\u003e J3[\"状态变化 / 告警 / 推送\"] G1 -. 可大于 ITS 最终投资池 .-\u003e H1 G4 -. 可作为执行候选，不等于必买 .-\u003e I1 G5 -. 允许成为更强约束的最终执行池 .-\u003e I1 4. 推荐解读口径 如果要在文档或汇报里一句话解释这张图，我建议这样说:\nITS 负责把更大的候选股票宇宙评审成分层股票池，TSS 负责研究验证，SPS 负责盘中监控，QTS 只消费适合进入交易闭环的那一部分池子。\n5. 相关代码入口 nightly_screener.py scheduler.py main.py wave_monitor.py screener.py golden_pool.py ",
+  "wordCount" : "520",
+  "inLanguage": "en",
+  "datePublished": "0001-01-01T00:00:00Z",
+  "dateModified": "0001-01-01T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "James Gan"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://jamesgan.com/qmt/qmt_detailed_runtime_flow_20260407/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "James Gan",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://jamesgan.com/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://jamesgan.com/" accesskey="h" title="James Gan (Alt + H)">James Gan</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="https://jamesgan.com/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://jamesgan.com/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://jamesgan.com/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://jamesgan.com/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      
+    </h1>
+    <div class="post-meta"><span>James Gan</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="qmt-detailed-runtime-flow">QMT Detailed Runtime Flow<a hidden class="anchor" aria-hidden="true" href="#qmt-detailed-runtime-flow">#</a></h1>
+<blockquote>
+<p>时间: 2026-04-07
+目的: 画清楚 <code>ITS / QTS / SPS / TSS / qdata / scheduler</code> 的详细运行流程
+说明: 本文分为两部分</p>
+<ol>
+<li>当前代码真实运行流程</li>
+<li>推荐演进后的分层池消费流程</li>
+</ol>
+</blockquote>
+<h2 id="1-当前代码真实运行流程">1. 当前代码真实运行流程<a hidden class="anchor" aria-hidden="true" href="#1-当前代码真实运行流程">#</a></h2>
+<h3 id="11-运行说明">1.1 运行说明<a hidden class="anchor" aria-hidden="true" href="#11-运行说明">#</a></h3>
+<p>当前仓库里，最稳定、最清晰的主流程是:</p>
+<ol>
+<li>夜间由 <code>scheduler.py</code> 拉起 <code>nightly_screener.py</code></li>
+<li><code>nightly_screener.py</code> 从种子池读取股票列表</li>
+<li><code>ITS</code> 用技术过滤 + AI 辩论筛出可关注标的</li>
+<li>结果写入 <code>config/golden_pool.yaml</code></li>
+<li>次日 <code>scheduler.py</code> 拉起 <code>qss/main.py</code></li>
+<li><code>QTS</code> 加载配置、数据源、执行器、风控和策略后进入交易时段运行</li>
+<li><code>SPS</code> 当前是相对独立的盘中监控链路，更多消费自己的 watchlist，而不是统一消费 <code>ITS</code> 分层池</li>
+</ol>
+<h3 id="12-详细运行流程图">1.2 详细运行流程图<a hidden class="anchor" aria-hidden="true" href="#12-详细运行流程图">#</a></h3>
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">flowchart TD
+    subgraph Time0[&#34;夜间研究与洗池&#34;]
+        A1[&#34;scheduler.py&lt;br/&gt;01:00 定时触发&#34;] --&gt; A2[&#34;job_run_nightly_screener()&#34;]
+        A2 --&gt; A3[&#34;scripts/jobs/nightly_screener.py&#34;]
+        A3 --&gt; A4[&#34;读取 config/pools/zxg_a_share_pool.csv&lt;br/&gt;种子股票池&#34;]
+        A3 --&gt; A5[&#34;ConfigManager.load()&lt;br/&gt;日志 / 配置初始化&#34;]
+        A3 --&gt; A6[&#34;DataFeed(settings)&lt;br/&gt;经 qdata / xtdata / CSV 获取日线&#34;]
+        A3 --&gt; A7[&#34;AIClient&lt;br/&gt;LLM 客户端&#34;]
+        A4 --&gt; A8[&#34;遍历股票&#34;]
+        A6 --&gt; A8
+        A7 --&gt; A8
+        A8 --&gt; A9[&#34;ITS.StockScreener.screen_symbol()&#34;]
+        A9 --&gt; A10[&#34;IndicatorEngine&lt;br/&gt;趋势过滤 / 择时过滤&#34;]
+        A10 --&gt; A11{&#34;技术过滤通过?&#34;}
+        A11 -- 否 --&gt; A12[&#34;skip_reason&lt;br/&gt;淘汰&#34;]
+        A11 -- 是 --&gt; A13[&#34;DebateContextBuilder&lt;br/&gt;组装技术/价格/持仓上下文&#34;]
+        A13 --&gt; A14[&#34;DebateEngine.run_debate()&#34;]
+        A14 --&gt; A15[&#34;debate_to_signal()&lt;br/&gt;生成 BUY / HOLD / SELL 等信号&#34;]
+        A15 --&gt; A16{&#34;action in BUY/STRONG_BUY?&#34;}
+        A16 -- 否 --&gt; A17[&#34;不入池&#34;]
+        A16 -- 是 --&gt; A18[&#34;写入 golden_symbols[]&lt;br/&gt;symbol / name / confidence / risk / logic&#34;]
+        A18 --&gt; A19[&#34;save_golden_pool()&#34;]
+        A19 --&gt; A20[&#34;config/golden_pool.yaml&#34;]
+    end
+
+    subgraph Time1[&#34;盘前调度&#34;]
+        B1[&#34;scheduler.py&lt;br/&gt;09:25 定时触发&#34;] --&gt; B2[&#34;job_start_qss_engine()&#34;]
+        B2 --&gt; B3[&#34;subprocess 启动 qss/main.py&#34;]
+    end
+
+    subgraph Time2[&#34;QTS 交易主链路&#34;]
+        C1[&#34;qss/main.py&#34;] --&gt; C2[&#34;ConfigManager.load()&#34;]
+        C2 --&gt; C3[&#34;DataFeed(settings)&lt;br/&gt;可接 qdata / xtdata&#34;]
+        C2 --&gt; C4[&#34;create_executor()&lt;br/&gt;QMTExecutor 或 SimulatedExecutor&#34;]
+        C4 --&gt; C5[&#34;ExecutorPortfolioAdapter&#34;]
+        C5 --&gt; C6[&#34;RiskManager&#34;]
+        C4 --&gt; C7[&#34;SignalProcessor.start()&#34;]
+        C2 --&gt; C8[&#34;create_strategy()&lt;br/&gt;按 settings.strategies 装载策略&#34;]
+        C8 --&gt; C9[&#34;strategy.start()&#34;]
+        C2 --&gt; C10[&#34;NotificationBridge.start()&#34;]
+        C2 --&gt; C11[&#34;FastAPI init_state / uvicorn&#34;]
+        C1 --&gt; C12[&#34;进入阻塞运行 while True&#34;]
+        C3 --&gt; C8
+        C6 --&gt; C7
+        C8 --&gt; C7
+        C7 --&gt; C13[&#34;风控检查 / 订单路由 / 执行&#34;]
+        C13 --&gt; C14[&#34;QMT 实盘下单 或 模拟执行&#34;]
+    end
+
+    subgraph Time3[&#34;SPS 独立盘中监控链路&#34;]
+        D1[&#34;sps/wave_monitor.py&#34;] --&gt; D2[&#34;读取 .watchlist_a.json&#34;]
+        D1 --&gt; D3[&#34;QuoteFetcher&lt;br/&gt;QMT xtdata 或 Sina&#34;]
+        D1 --&gt; D4[&#34;HistoryDataManager&#34;]
+        D3 --&gt; D5[&#34;实时行情&#34;]
+        D4 --&gt; D6[&#34;历史K线&#34;]
+        D5 --&gt; D7[&#34;WaveComputeEngine&lt;br/&gt;V7.1 Titan 向量计算&#34;]
+        D6 --&gt; D7
+        D7 --&gt; D8[&#34;状态机 / 变化检测 / 告警格式化&#34;]
+        D8 --&gt; D9[&#34;控制台 / 持久化 / 推送&#34;]
+    end
+
+    subgraph Time4[&#34;TSS 研究与回测链路&#34;]
+        E1[&#34;TSS runner / backtest&#34;] --&gt; E2[&#34;更宽研究池 / 自定义 universe&#34;]
+        E2 --&gt; E3[&#34;qdata / CSV / yfinance / vn.py&#34;]
+        E3 --&gt; E4[&#34;回测结果 / 对比报告&#34;]
+    end
+
+    A20 -. 次日作为候选输入 .-&gt; C8
+    A20 -. 当前也可供其他模块读取 .-&gt; D2
+    C3 --&gt;|&#34;统一数据入口&#34;| E3
+</code></pre><h2 id="2-当前流程的关键结论">2. 当前流程的关键结论<a hidden class="anchor" aria-hidden="true" href="#2-当前流程的关键结论">#</a></h2>
+<ul>
+<li>当前最明确的“日切换”主线是 <code>scheduler -&gt; nightly_screener -&gt; golden_pool.yaml -&gt; qss/main.py</code></li>
+<li><code>ITS</code> 已经承担了夜间评审和洗池职责</li>
+<li><code>QTS</code> 是唯一真正承担执行闭环的系统</li>
+<li><code>SPS</code> 目前更像并行监控服务，还没有完全切到统一的 <code>ITS</code> 输出契约</li>
+<li><code>TSS</code> 保留更宽研究池是合理的，不必被 <code>ITS</code> 完全约束</li>
+</ul>
+<h2 id="3-推荐演进后的详细运行流程">3. 推荐演进后的详细运行流程<a hidden class="anchor" aria-hidden="true" href="#3-推荐演进后的详细运行流程">#</a></h2>
+<h3 id="31-演进目标">3.1 演进目标<a hidden class="anchor" aria-hidden="true" href="#31-演进目标">#</a></h3>
+<p>你前面提的方向我认可，推荐把 <code>ITS</code> 定义为“分层池生产者”，而不是“强耦合驱动所有下游”的控制中心。</p>
+<p>也就是说:</p>
+<ul>
+<li><code>ITS</code> 负责评审和分层</li>
+<li><code>QTS</code> 负责执行</li>
+<li><code>SPS</code> 负责监控和推送</li>
+<li><code>TSS</code> 负责研究和回测</li>
+</ul>
+<p>真正需要统一的是“池对象”和“消费契约”。</p>
+<h3 id="32-推荐分层池消费流程图">3.2 推荐分层池消费流程图<a hidden class="anchor" aria-hidden="true" href="#32-推荐分层池消费流程图">#</a></h3>
+<pre tabindex="0"><code class="language-mermaid" data-lang="mermaid">flowchart TD
+    F1[&#34;种子池 / 外部候选来源&lt;br/&gt;watchlist / 自选池 / 主题池 / 事件池&#34;] --&gt; F2[&#34;ITS 评审入口&#34;]
+    F2 --&gt; F3[&#34;技术过滤&lt;br/&gt;趋势 / 择时 / 风险前置筛选&#34;]
+    F3 --&gt; F4[&#34;多视角辩论&lt;br/&gt;technical / fundamental / sentiment / arbiter&#34;]
+    F4 --&gt; F5[&#34;ITS Memory&lt;br/&gt;历史评审结果 / lesson / 命中率反馈&#34;]
+    F5 --&gt; F6[&#34;分层池生成器&#34;]
+
+    F6 --&gt; G1[&#34;research_universe&lt;br/&gt;研究全集&#34;]
+    F6 --&gt; G2[&#34;reviewed_pool&lt;br/&gt;已评审候选池&#34;]
+    F6 --&gt; G3[&#34;monitor_pool&lt;br/&gt;重点监控池&#34;]
+    F6 --&gt; G4[&#34;investable_top20&lt;br/&gt;可投资池&#34;]
+    F6 --&gt; G5[&#34;execution_top5&lt;br/&gt;执行池&#34;]
+
+    G1 --&gt; H1[&#34;TSS 消费&lt;br/&gt;策略搜索 / 样本外回测 / 参数比较&#34;]
+    G2 --&gt; H2[&#34;人工复核 / 投研复盘&#34;]
+    G3 --&gt; H3[&#34;SPS 消费&lt;br/&gt;盘中波段监控 / 告警推送&#34;]
+    G4 --&gt; H4[&#34;QTS 候选输入&lt;br/&gt;策略可见 universe&#34;]
+    G5 --&gt; H5[&#34;QTS 高优先级执行池&#34;]
+
+    H4 --&gt; I1[&#34;QTS 策略层&#34;]
+    H5 --&gt; I1
+    I1 --&gt; I2[&#34;SignalProcessor&#34;]
+    I2 --&gt; I3[&#34;RiskManager&#34;]
+    I3 --&gt; I4[&#34;Executor&lt;br/&gt;QMT / Simulated&#34;]
+
+    H3 --&gt; J1[&#34;实时行情 + 历史K线&#34;]
+    J1 --&gt; J2[&#34;WaveComputeEngine&#34;]
+    J2 --&gt; J3[&#34;状态变化 / 告警 / 推送&#34;]
+
+    G1 -. 可大于 ITS 最终投资池 .-&gt; H1
+    G4 -. 可作为执行候选，不等于必买 .-&gt; I1
+    G5 -. 允许成为更强约束的最终执行池 .-&gt; I1
+</code></pre><h2 id="4-推荐解读口径">4. 推荐解读口径<a hidden class="anchor" aria-hidden="true" href="#4-推荐解读口径">#</a></h2>
+<p>如果要在文档或汇报里一句话解释这张图，我建议这样说:</p>
+<p><code>ITS 负责把更大的候选股票宇宙评审成分层股票池，TSS 负责研究验证，SPS 负责盘中监控，QTS 只消费适合进入交易闭环的那一部分池子。</code></p>
+<h2 id="5-相关代码入口">5. 相关代码入口<a hidden class="anchor" aria-hidden="true" href="#5-相关代码入口">#</a></h2>
+<ul>
+<li><a href="/Users/james/code/qmt/qmt/scripts/jobs/nightly_screener.py">nightly_screener.py</a></li>
+<li><a href="/Users/james/code/qmt/qmt/scripts/scheduler.py">scheduler.py</a></li>
+<li><a href="/Users/james/code/qmt/qmt/qss/main.py">main.py</a></li>
+<li><a href="/Users/james/code/qmt/qmt/sps/wave_monitor.py">wave_monitor.py</a></li>
+<li><a href="/Users/james/code/qmt/qmt/its/screener.py">screener.py</a></li>
+<li><a href="/Users/james/code/qmt/qmt/its/golden_pool.py">golden_pool.py</a></li>
+</ul>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://jamesgan.com/">James Gan</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

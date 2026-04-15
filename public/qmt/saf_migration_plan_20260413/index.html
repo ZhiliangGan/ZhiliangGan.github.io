@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>James Gan</title>
+<meta name="keywords" content="">
+<meta name="description" content="SAF 重构迁移方案
+日期: 2026-04-13
+目标: 将 SAF 提升到与 StrategeFactoryFlow/TSS 并列层次，废弃两者中与 SAF 重叠的部分
+范围: StrategeFactoryFlow, TSS, SAF 三个项目的回测/数据/评估层
+
+1. 当前架构状态
+1.1 三个项目现状
+qmt/
+├── SAF/                          # 新共享内核（重构骨架）
+│   ├── src/saf/
+│   │   ├── capability/           # ✅ 策略能力检测
+│   │   ├── data/                # ⚠️ 框架完成，实现缺失
+│   │   ├── engine/               # ⚠️ 框架完成，时序实现待补全
+│   │   ├── evaluation/           # ⚠️ 框架完成，评分实现缺失
+│   │   ├── models/               # ✅ 强类型对象模型
+│   │   ├── orchestrator/         # ✅ 编排层框架
+│   │   ├── storage/              # ✅ 接口定义
+│   │   └── strategy/             # ✅ 策略解析器
+│   └── tests/
+│
+├── StrategeFactoryFlow/          # 策略工厂（待迁移/废弃）
+│   ├── evaluate/
+│   │   ├── engine.py            # ❌ 与 SAF engine 重复 → 废弃
+│   │   ├── fast_screen_policy.py # ✅ 保留（SAF 暂无对应）
+│   │   └── scorer.py            # ⚠️ 与 SAF evaluation 重复 → 迁移/废弃
+│   ├── run_evaluate.py          # ✅ 保留（批量编排）
+│   └── pipeline/                 # ⚠️ 部分迁移
+│
+└── tss/                          # 策略运营（待迁移/废弃）
+    ├── data_loader.py            # ❌ 与 SAF data 重复 → 废弃
+    ├── run_*_comparison.py       # ⚠️ 保留（多策略对比）
+    ├── vnpy_backtest_runner.py   # ⚠️ SAF vnpy_adapter 替代
+    └── ...
+1.2 SAF 能力 vs 现有实现 (2026-04-13 更新)
+
+  
+      
+          模块
+          SAF 现状
+          StrategeFactoryFlow
+          TSS
+          结论
+      
+  
+  
+      
+          策略拓扑检测
+          ✅ 完整
+          ✅ 完整
+          ❌ 无
+          SAF 优，废弃 SFF
+      
+      
+          FailureCode
+          ✅ 完整
+          ❌ 散落字符串
+          ❌ 无
+          SAF 优，废弃 SFF
+      
+      
+          对象模型
+          ✅ 完整
+          ❌ pd.DataFrame
+          ❌ 无
+          SAF 优
+      
+      
+          时序回测引擎
+          ✅ 完整
+          ✅ 完整
+          ⚠️ 简单实现
+          SAF 已可替代 SFF
+      
+      
+          截面回测引擎
+          ✅ 完整
+          ✅ 完整
+          ❌ 无
+          SAF 已可替代 SFF
+      
+      
+          配对回测引擎
+          ⚠️ 骨架定义
+          ❌ 无
+          ❌ 无
+          SAF 框架已定义，实现待补
+      
+      
+          vnpy 适配器
+          ⚠️ 骨架定义
+          ❌ 无
+          ✅ 完整
+          迁移到 SAF vnpy_adapter
+      
+      
+          数据加载
+          ⚠️ 协议定义
+          ❌ 直接用 DataService
+          ✅ 完整
+          迁移 data_loader 到 SAF
+      
+      
+          评分系统
+          ⚠️ 简化版
+          ✅ 6维评分
+          ❌ 无
+          迁移 6维到 SAF evaluation
+      
+      
+          编排/批量
+          ✅ 框架完整
+          ✅ 完整
+          ⚠️ 脚本
+          SAF orchestrator 已可替代
+      
+      
+          快筛重试
+          ❌ 无
+          ✅ 完整
+          ❌ 无
+          SFF 保留或迁移到 SAF
+      
+  
+
+
+2. 迁移原则
+2.1 三不原则
+
+不删除代码：所有待废弃代码移入 legacy/ 目录，保留历史
+不中断开发：迁移期间现有流水线照常运行
+不破坏接口：SAF 接口先稳定再对接
+
+2.2 迁移顺序
+Phase 1: 稳固 SAF 内核（共享层先完成）
+Phase 2: 废弃 StrategeFactoryFlow 中对应模块
+Phase 3: 废弃 TSS 中对应模块
+Phase 4: 清理 legacy/ 目录
+
+3. 完整迁移方案
+3.1 Phase 1: 稳固 SAF 内核 ✅ 已完成 (2026-04-13)
+目标: 补全 SAF 中缺失的关键实现，使其能够承接废弃模块">
+<meta name="author" content="James Gan">
+<link rel="canonical" href="https://jamesgan.com/qmt/saf_migration_plan_20260413/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.47e51c7d8489b002361bac156ce9a0a8776d08c5462c2cee95801efafdd90d35.css" integrity="sha256-R&#43;UcfYSJsAI2G6wVbOmgqHdtCMVGLCzulYAe&#43;v3ZDTU=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://jamesgan.com/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://jamesgan.com/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://jamesgan.com/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://jamesgan.com/apple-touch-icon.png">
+<link rel="mask-icon" href="https://jamesgan.com/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://jamesgan.com/qmt/saf_migration_plan_20260413/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://jamesgan.com/qmt/saf_migration_plan_20260413/">
+  <meta property="og:site_name" content="James Gan">
+  <meta property="og:title" content="James Gan">
+  <meta property="og:description" content="SAF 重构迁移方案 日期: 2026-04-13 目标: 将 SAF 提升到与 StrategeFactoryFlow/TSS 并列层次，废弃两者中与 SAF 重叠的部分 范围: StrategeFactoryFlow, TSS, SAF 三个项目的回测/数据/评估层
+1. 当前架构状态 1.1 三个项目现状 qmt/ ├── SAF/ # 新共享内核（重构骨架） │ ├── src/saf/ │ │ ├── capability/ # ✅ 策略能力检测 │ │ ├── data/ # ⚠️ 框架完成，实现缺失 │ │ ├── engine/ # ⚠️ 框架完成，时序实现待补全 │ │ ├── evaluation/ # ⚠️ 框架完成，评分实现缺失 │ │ ├── models/ # ✅ 强类型对象模型 │ │ ├── orchestrator/ # ✅ 编排层框架 │ │ ├── storage/ # ✅ 接口定义 │ │ └── strategy/ # ✅ 策略解析器 │ └── tests/ │ ├── StrategeFactoryFlow/ # 策略工厂（待迁移/废弃） │ ├── evaluate/ │ │ ├── engine.py # ❌ 与 SAF engine 重复 → 废弃 │ │ ├── fast_screen_policy.py # ✅ 保留（SAF 暂无对应） │ │ └── scorer.py # ⚠️ 与 SAF evaluation 重复 → 迁移/废弃 │ ├── run_evaluate.py # ✅ 保留（批量编排） │ └── pipeline/ # ⚠️ 部分迁移 │ └── tss/ # 策略运营（待迁移/废弃） ├── data_loader.py # ❌ 与 SAF data 重复 → 废弃 ├── run_*_comparison.py # ⚠️ 保留（多策略对比） ├── vnpy_backtest_runner.py # ⚠️ SAF vnpy_adapter 替代 └── ... 1.2 SAF 能力 vs 现有实现 (2026-04-13 更新) 模块 SAF 现状 StrategeFactoryFlow TSS 结论 策略拓扑检测 ✅ 完整 ✅ 完整 ❌ 无 SAF 优，废弃 SFF FailureCode ✅ 完整 ❌ 散落字符串 ❌ 无 SAF 优，废弃 SFF 对象模型 ✅ 完整 ❌ pd.DataFrame ❌ 无 SAF 优 时序回测引擎 ✅ 完整 ✅ 完整 ⚠️ 简单实现 SAF 已可替代 SFF 截面回测引擎 ✅ 完整 ✅ 完整 ❌ 无 SAF 已可替代 SFF 配对回测引擎 ⚠️ 骨架定义 ❌ 无 ❌ 无 SAF 框架已定义，实现待补 vnpy 适配器 ⚠️ 骨架定义 ❌ 无 ✅ 完整 迁移到 SAF vnpy_adapter 数据加载 ⚠️ 协议定义 ❌ 直接用 DataService ✅ 完整 迁移 data_loader 到 SAF 评分系统 ⚠️ 简化版 ✅ 6维评分 ❌ 无 迁移 6维到 SAF evaluation 编排/批量 ✅ 框架完整 ✅ 完整 ⚠️ 脚本 SAF orchestrator 已可替代 快筛重试 ❌ 无 ✅ 完整 ❌ 无 SFF 保留或迁移到 SAF 2. 迁移原则 2.1 三不原则 不删除代码：所有待废弃代码移入 legacy/ 目录，保留历史 不中断开发：迁移期间现有流水线照常运行 不破坏接口：SAF 接口先稳定再对接 2.2 迁移顺序 Phase 1: 稳固 SAF 内核（共享层先完成） Phase 2: 废弃 StrategeFactoryFlow 中对应模块 Phase 3: 废弃 TSS 中对应模块 Phase 4: 清理 legacy/ 目录 3. 完整迁移方案 3.1 Phase 1: 稳固 SAF 内核 ✅ 已完成 (2026-04-13) 目标: 补全 SAF 中缺失的关键实现，使其能够承接废弃模块">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="qmt">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="James Gan">
+  <meta name="twitter:description" content="SAF 重构迁移方案 日期: 2026-04-13 目标: 将 SAF 提升到与 StrategeFactoryFlow/TSS 并列层次，废弃两者中与 SAF 重叠的部分 范围: StrategeFactoryFlow, TSS, SAF 三个项目的回测/数据/评估层
+1. 当前架构状态 1.1 三个项目现状 qmt/ ├── SAF/ # 新共享内核（重构骨架） │ ├── src/saf/ │ │ ├── capability/ # ✅ 策略能力检测 │ │ ├── data/ # ⚠️ 框架完成，实现缺失 │ │ ├── engine/ # ⚠️ 框架完成，时序实现待补全 │ │ ├── evaluation/ # ⚠️ 框架完成，评分实现缺失 │ │ ├── models/ # ✅ 强类型对象模型 │ │ ├── orchestrator/ # ✅ 编排层框架 │ │ ├── storage/ # ✅ 接口定义 │ │ └── strategy/ # ✅ 策略解析器 │ └── tests/ │ ├── StrategeFactoryFlow/ # 策略工厂（待迁移/废弃） │ ├── evaluate/ │ │ ├── engine.py # ❌ 与 SAF engine 重复 → 废弃 │ │ ├── fast_screen_policy.py # ✅ 保留（SAF 暂无对应） │ │ └── scorer.py # ⚠️ 与 SAF evaluation 重复 → 迁移/废弃 │ ├── run_evaluate.py # ✅ 保留（批量编排） │ └── pipeline/ # ⚠️ 部分迁移 │ └── tss/ # 策略运营（待迁移/废弃） ├── data_loader.py # ❌ 与 SAF data 重复 → 废弃 ├── run_*_comparison.py # ⚠️ 保留（多策略对比） ├── vnpy_backtest_runner.py # ⚠️ SAF vnpy_adapter 替代 └── ... 1.2 SAF 能力 vs 现有实现 (2026-04-13 更新) 模块 SAF 现状 StrategeFactoryFlow TSS 结论 策略拓扑检测 ✅ 完整 ✅ 完整 ❌ 无 SAF 优，废弃 SFF FailureCode ✅ 完整 ❌ 散落字符串 ❌ 无 SAF 优，废弃 SFF 对象模型 ✅ 完整 ❌ pd.DataFrame ❌ 无 SAF 优 时序回测引擎 ✅ 完整 ✅ 完整 ⚠️ 简单实现 SAF 已可替代 SFF 截面回测引擎 ✅ 完整 ✅ 完整 ❌ 无 SAF 已可替代 SFF 配对回测引擎 ⚠️ 骨架定义 ❌ 无 ❌ 无 SAF 框架已定义，实现待补 vnpy 适配器 ⚠️ 骨架定义 ❌ 无 ✅ 完整 迁移到 SAF vnpy_adapter 数据加载 ⚠️ 协议定义 ❌ 直接用 DataService ✅ 完整 迁移 data_loader 到 SAF 评分系统 ⚠️ 简化版 ✅ 6维评分 ❌ 无 迁移 6维到 SAF evaluation 编排/批量 ✅ 框架完整 ✅ 完整 ⚠️ 脚本 SAF orchestrator 已可替代 快筛重试 ❌ 无 ✅ 完整 ❌ 无 SFF 保留或迁移到 SAF 2. 迁移原则 2.1 三不原则 不删除代码：所有待废弃代码移入 legacy/ 目录，保留历史 不中断开发：迁移期间现有流水线照常运行 不破坏接口：SAF 接口先稳定再对接 2.2 迁移顺序 Phase 1: 稳固 SAF 内核（共享层先完成） Phase 2: 废弃 StrategeFactoryFlow 中对应模块 Phase 3: 废弃 TSS 中对应模块 Phase 4: 清理 legacy/ 目录 3. 完整迁移方案 3.1 Phase 1: 稳固 SAF 内核 ✅ 已完成 (2026-04-13) 目标: 补全 SAF 中缺失的关键实现，使其能够承接废弃模块">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Qmts",
+      "item": "https://jamesgan.com/qmt/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "",
+      "item": "https://jamesgan.com/qmt/saf_migration_plan_20260413/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "",
+  "name": "",
+  "description": "SAF 重构迁移方案 日期: 2026-04-13 目标: 将 SAF 提升到与 StrategeFactoryFlow/TSS 并列层次，废弃两者中与 SAF 重叠的部分 范围: StrategeFactoryFlow, TSS, SAF 三个项目的回测/数据/评估层\n1. 当前架构状态 1.1 三个项目现状 qmt/ ├── SAF/ # 新共享内核（重构骨架） │ ├── src/saf/ │ │ ├── capability/ # ✅ 策略能力检测 │ │ ├── data/ # ⚠️ 框架完成，实现缺失 │ │ ├── engine/ # ⚠️ 框架完成，时序实现待补全 │ │ ├── evaluation/ # ⚠️ 框架完成，评分实现缺失 │ │ ├── models/ # ✅ 强类型对象模型 │ │ ├── orchestrator/ # ✅ 编排层框架 │ │ ├── storage/ # ✅ 接口定义 │ │ └── strategy/ # ✅ 策略解析器 │ └── tests/ │ ├── StrategeFactoryFlow/ # 策略工厂（待迁移/废弃） │ ├── evaluate/ │ │ ├── engine.py # ❌ 与 SAF engine 重复 → 废弃 │ │ ├── fast_screen_policy.py # ✅ 保留（SAF 暂无对应） │ │ └── scorer.py # ⚠️ 与 SAF evaluation 重复 → 迁移/废弃 │ ├── run_evaluate.py # ✅ 保留（批量编排） │ └── pipeline/ # ⚠️ 部分迁移 │ └── tss/ # 策略运营（待迁移/废弃） ├── data_loader.py # ❌ 与 SAF data 重复 → 废弃 ├── run_*_comparison.py # ⚠️ 保留（多策略对比） ├── vnpy_backtest_runner.py # ⚠️ SAF vnpy_adapter 替代 └── ... 1.2 SAF 能力 vs 现有实现 (2026-04-13 更新) 模块 SAF 现状 StrategeFactoryFlow TSS 结论 策略拓扑检测 ✅ 完整 ✅ 完整 ❌ 无 SAF 优，废弃 SFF FailureCode ✅ 完整 ❌ 散落字符串 ❌ 无 SAF 优，废弃 SFF 对象模型 ✅ 完整 ❌ pd.DataFrame ❌ 无 SAF 优 时序回测引擎 ✅ 完整 ✅ 完整 ⚠️ 简单实现 SAF 已可替代 SFF 截面回测引擎 ✅ 完整 ✅ 完整 ❌ 无 SAF 已可替代 SFF 配对回测引擎 ⚠️ 骨架定义 ❌ 无 ❌ 无 SAF 框架已定义，实现待补 vnpy 适配器 ⚠️ 骨架定义 ❌ 无 ✅ 完整 迁移到 SAF vnpy_adapter 数据加载 ⚠️ 协议定义 ❌ 直接用 DataService ✅ 完整 迁移 data_loader 到 SAF 评分系统 ⚠️ 简化版 ✅ 6维评分 ❌ 无 迁移 6维到 SAF evaluation 编排/批量 ✅ 框架完整 ✅ 完整 ⚠️ 脚本 SAF orchestrator 已可替代 快筛重试 ❌ 无 ✅ 完整 ❌ 无 SFF 保留或迁移到 SAF 2. 迁移原则 2.1 三不原则 不删除代码：所有待废弃代码移入 legacy/ 目录，保留历史 不中断开发：迁移期间现有流水线照常运行 不破坏接口：SAF 接口先稳定再对接 2.2 迁移顺序 Phase 1: 稳固 SAF 内核（共享层先完成） Phase 2: 废弃 StrategeFactoryFlow 中对应模块 Phase 3: 废弃 TSS 中对应模块 Phase 4: 清理 legacy/ 目录 3. 完整迁移方案 3.1 Phase 1: 稳固 SAF 内核 ✅ 已完成 (2026-04-13) 目标: 补全 SAF 中缺失的关键实现，使其能够承接废弃模块\n",
+  "keywords": [
+    
+  ],
+  "articleBody": "SAF 重构迁移方案 日期: 2026-04-13 目标: 将 SAF 提升到与 StrategeFactoryFlow/TSS 并列层次，废弃两者中与 SAF 重叠的部分 范围: StrategeFactoryFlow, TSS, SAF 三个项目的回测/数据/评估层\n1. 当前架构状态 1.1 三个项目现状 qmt/ ├── SAF/ # 新共享内核（重构骨架） │ ├── src/saf/ │ │ ├── capability/ # ✅ 策略能力检测 │ │ ├── data/ # ⚠️ 框架完成，实现缺失 │ │ ├── engine/ # ⚠️ 框架完成，时序实现待补全 │ │ ├── evaluation/ # ⚠️ 框架完成，评分实现缺失 │ │ ├── models/ # ✅ 强类型对象模型 │ │ ├── orchestrator/ # ✅ 编排层框架 │ │ ├── storage/ # ✅ 接口定义 │ │ └── strategy/ # ✅ 策略解析器 │ └── tests/ │ ├── StrategeFactoryFlow/ # 策略工厂（待迁移/废弃） │ ├── evaluate/ │ │ ├── engine.py # ❌ 与 SAF engine 重复 → 废弃 │ │ ├── fast_screen_policy.py # ✅ 保留（SAF 暂无对应） │ │ └── scorer.py # ⚠️ 与 SAF evaluation 重复 → 迁移/废弃 │ ├── run_evaluate.py # ✅ 保留（批量编排） │ └── pipeline/ # ⚠️ 部分迁移 │ └── tss/ # 策略运营（待迁移/废弃） ├── data_loader.py # ❌ 与 SAF data 重复 → 废弃 ├── run_*_comparison.py # ⚠️ 保留（多策略对比） ├── vnpy_backtest_runner.py # ⚠️ SAF vnpy_adapter 替代 └── ... 1.2 SAF 能力 vs 现有实现 (2026-04-13 更新) 模块 SAF 现状 StrategeFactoryFlow TSS 结论 策略拓扑检测 ✅ 完整 ✅ 完整 ❌ 无 SAF 优，废弃 SFF FailureCode ✅ 完整 ❌ 散落字符串 ❌ 无 SAF 优，废弃 SFF 对象模型 ✅ 完整 ❌ pd.DataFrame ❌ 无 SAF 优 时序回测引擎 ✅ 完整 ✅ 完整 ⚠️ 简单实现 SAF 已可替代 SFF 截面回测引擎 ✅ 完整 ✅ 完整 ❌ 无 SAF 已可替代 SFF 配对回测引擎 ⚠️ 骨架定义 ❌ 无 ❌ 无 SAF 框架已定义，实现待补 vnpy 适配器 ⚠️ 骨架定义 ❌ 无 ✅ 完整 迁移到 SAF vnpy_adapter 数据加载 ⚠️ 协议定义 ❌ 直接用 DataService ✅ 完整 迁移 data_loader 到 SAF 评分系统 ⚠️ 简化版 ✅ 6维评分 ❌ 无 迁移 6维到 SAF evaluation 编排/批量 ✅ 框架完整 ✅ 完整 ⚠️ 脚本 SAF orchestrator 已可替代 快筛重试 ❌ 无 ✅ 完整 ❌ 无 SFF 保留或迁移到 SAF 2. 迁移原则 2.1 三不原则 不删除代码：所有待废弃代码移入 legacy/ 目录，保留历史 不中断开发：迁移期间现有流水线照常运行 不破坏接口：SAF 接口先稳定再对接 2.2 迁移顺序 Phase 1: 稳固 SAF 内核（共享层先完成） Phase 2: 废弃 StrategeFactoryFlow 中对应模块 Phase 3: 废弃 TSS 中对应模块 Phase 4: 清理 legacy/ 目录 3. 完整迁移方案 3.1 Phase 1: 稳固 SAF 内核 ✅ 已完成 (2026-04-13) 目标: 补全 SAF 中缺失的关键实现，使其能够承接废弃模块\n已完成 ✅ # 任务 实现位置 状态 1.1 TimeSeriesExecutionEngine（含 equity curve） saf/engine/time_series.py ✅ 已完成 1.2 PanelExecutionEngine（含 DataFrame 信号支持） saf/engine/panel.py ✅ 已完成 1.3 Sandbox（超时、异常处理、DataFrame 支持） saf/engine/sandbox.py ✅ 已完成 1.4 BacktestConfig + CostModel saf/engine/config.py ✅ 已完成 1.5 CapabilityResolver + StrategyTopologyDetector saf/capability/resolver.py, detector.py ✅ 已完成 - CapabilityResult dataclass + SupportMatrix saf/capability/support_matrix.py ✅ 已完成 - JobExecutorImpl + BatchExecutor saf/orchestrator/orchestrator.py, batch.py ✅ 已完成 - RetryPolicy + RetryableError saf/orchestrator/retry.py ✅ 已完成 Architecture: StrategyKind (业务分类) → CapabilityResolver → StrategyTopology (执行路由) → ExecutionEngine\nStrategyKind.TIME_SERIES → StrategyTopology.TIME_SERIES → TimeSeriesExecutionEngine StrategyKind.CROSS_SECTIONAL → StrategyTopology.CROSS_SECTIONAL → PanelExecutionEngine StrategyKind.PAIRS → StrategyTopology.PAIR → PairExecutionEngine (待实现) 待完成 ⚠️ # 任务 实现位置 状态 优先级 1.6 迁移 6 维评分 saf/evaluation/scorer.py ⚠️ 待实现 P1 1.7 迁移切片评分 saf/evaluation/slices.py ⚠️ 待实现 P2 1.8 PairBundle + PairExecutionEngine saf/engine/pair.py ⚠️ 骨架待实现 P3 废弃模块对照表（更新） 待废弃（SFF） 替代（SAF） 状态 evaluate/engine.py 时序 engine/time_series.py ✅ SAF 已完成 evaluate/engine.py 截面 engine/panel.py ✅ SAF 已完成 evaluate/scorer.py evaluation/scorer.py ⚠️ SAF 简化版已有，6维待迁移 evaluate/fast_screen_policy.py 新建 evaluation/fast_screen.py ❌ 待新建 pipeline/ orchestrator/ ⚠️ 部分重叠 待废弃（TSS） 替代（SAF） 状态 data_loader.py data/providers.py ⚠️ 协议定义已有，实现待迁移 vnpy_backtest_runner.py engine/vnpy_adapter.py ⚠️ 骨架已有，实现待对齐 剩余工作量估算: 2-3 人天（原计划 5 人天，已完成大部分）\n3.2 Phase 2: 迁移 StrategeFactoryFlow（2-3 天） 2.1 目录重组 StrategeFactoryFlow/ ├── SAF/ # 保持（作为独立包） ├── SAF_new/ # 新建：指向 qmt/SAF/src/saf │ └── (symlink or pyproject path) ├── legacy/ # 新建：废弃代码归档 │ ├── evaluate/ │ │ ├── engine.py # 移入（废弃） │ │ └── scorer.py # 移入（废弃） │ └── pipeline/ # 移入（废弃） ├── evaluate/ # 重写：对 SAF 的 thin wrapper │ ├── engine_adapter.py # 新建：SAF engine 适配器 │ ├── scorer_adapter.py # 新建：SAF scorer 适配器 │ └── fast_screen.py # 保留（SAF 暂无） ├── run_evaluate.py # 修改：调用 SAF_new └── ... 2.2 迁移步骤 Step 1: 创建 legacy/ 目录，移入废弃代码\nmkdir -p StrategeFactoryFlow/legacy/evaluate mv StrategeFactoryFlow/evaluate/engine.py legacy/evaluate/ mv StrategeFactoryFlow/evaluate/scorer.py legacy/evaluate/ mv StrategeFactoryFlow/pipeline legacy/pipeline Step 2: 创建 evaluate/ 新实现（thin wrapper）\n# evaluate/engine_adapter.py from saf.engine import TimeSeriesExecutionEngine, PanelExecutionEngine from saf.engine.protocols import BacktestRequest, BacktestBundle class SAFTimeSeriesAdapter: \"\"\"SFF wrapper around SAF TimeSeriesExecutionEngine.\"\"\" ... class SAFPanelAdapter: \"\"\"SFF wrapper around SAF PanelExecutionEngine.\"\"\" ... Step 3: 更新 run_evaluate.py 使用 SAF\nStep 4: 保留以下模块（不迁移到 SAF）:\nfast_screen_policy.py → evaluate/fast_screen.py run_pipeline.py → 评估后处理，保留 pipeline/backfill_claims.py → 迁移到 SAF 或保留 3.3 Phase 3: 迁移 TSS（1-2 天） 3.1 目录重组 tss/ ├── legacy/ # 新建：废弃代码归档 │ ├── data_loader.py │ ├── run_*_comparison.py # 保留（多策略对比，非回测核心） │ └── vnpy_*.py ├── SAF/ # 新建：指向 qmt/SAF/src/saf ├── data/ # 重写：SAF data provider 封装 │ └── provider_adapter.py └── ... 3.2 迁移步骤 Step 1: 创建 legacy/ 目录\nmkdir -p tss/legacy mv tss/data_loader.py tss/legacy/ Step 2: 实现 tss/data/ 基于 SAF 协议\nStep 3: 废弃 vnpy_backtest_runner.py，使用 SAF/engine/vnpy_adapter.py\n3.4 Phase 4: 清理与验证（1 天） 4.1 最终目录结构 qmt/ ├── SAF/ # 统一共享内核 │ └── src/saf/ │ ├── capability/ # ✅ 完整 │ ├── data/ # ✅ 完整（迁移后） │ ├── engine/ # ✅ 完整（迁移后） │ ├── evaluation/ # ✅ 完整（迁移后） │ ├── models/ # ✅ 完整 │ ├── orchestrator/ # ✅ 完整（迁移后） │ ├── strategy/ # ✅ 完整 │ └── storage/ # ✅ 完整 │ ├── StrategeFactoryFlow/ # 策略工厂应用 │ ├── legacy/ # 归档（可删除） │ ├── evaluate/ # SAF thin wrapper │ │ ├── engine_adapter.py │ │ ├── scorer_adapter.py │ │ └── fast_screen.py │ ├── run_evaluate.py # 批量评估入口 │ └── ... │ ├── tss/ # 策略运营应用 │ ├── legacy/ # 归档（可删除） │ ├── data/ # SAF data wrapper │ ├── strategies/ # 策略池 │ └── ... │ └── qdata/ # 数据服务（保留，供 SAF 调用） 4.2 验证清单 SAF 时序引擎输出与 SFF 旧引擎一致（误差 \u003c 0.01%） SAF 截面引擎输出与 SFF 旧引擎一致 SAF 评分系统输出与 SFF 旧系统一致 run_evaluate.py 端到端运行成功 TSS 数据加载使用 SAF 协议 所有测试通过 4. 详细任务分解 4.1 Phase 1 任务（SAF 内核补全）✅ 已完成 # 任务 状态 优先级 1.1 迁移 SFF SignalBacktester 逻辑到 SAF TimeSeriesExecutionEngine ✅ 已完成 P0 1.2 迁移 SFF CrossSectionalBacktester 逻辑到 SAF PanelExecutionEngine ✅ 已完成 P0 1.3 实现 execute_signal_function 超时与异常处理 ✅ 已完成 P0 1.4 迁移 CostModel 和成本计算到 SAF engine/config.py ✅ 已完成 P1 1.5 CapabilityResolver + StrategyTopologyDetector ✅ 已完成 P0 1.6 迁移 SFF 6维评分到 SAF evaluation/scorer.py ⚠️ 待实现 P1 1.7 迁移切片评分到 SAF evaluation/slices.py ⚠️ 待实现 P2 1.8 实现 PairBundle 和 PairExecutionEngine 骨架 ⚠️ 待实现 P3 4.2 Phase 2 任务（SFF 迁移） # 任务 负责人 优先级 依赖 2.1 创建 legacy/ 并移入废弃代码 - P0 1.1, 1.2, 1.3 2.2 实现 evaluate/engine_adapter.py (SAF wrapper) - P0 1.1, 1.2 2.3 实现 evaluate/scorer_adapter.py (SAF wrapper) - P0 1.6 2.4 更新 run_evaluate.py 使用 SAF adapter - P0 2.2, 2.3 2.5 保留 fast_screen_policy.py 为 evaluate/fast_screen.py - P1 无 2.6 端到端验证 - P0 2.4 4.3 Phase 3 任务（TSS 迁移） # 任务 负责人 优先级 依赖 3.1 创建 tss/legacy/ 并移入废弃代码 - P0 1.5 3.2 实现 tss/data/provider_adapter.py - P0 1.5 3.3 废弃 vnpy_backtest_runner.py，使用 SAF adapter - P1 1.1, 1.2 3.4 端到端验证 - P0 3.2 4.4 Phase 4 任务（清理） # 任务 负责人 优先级 依赖 4.1 删除 legacy/ 目录（或保留备查） - P2 Phase 2, 3 完成 4.2 更新文档 - P1 Phase 2, 3 完成 4.3 全面测试验证 - P0 Phase 4 完成 5. 影响评估 5.1 功能影响 废弃项 影响 缓解措施 SFF engine.py 时序/截面回测依赖 SAF 补全前不删除 SFF scorer.py 评分系统依赖 SAF 补全前不删除 TSS data_loader.py 数据加载依赖 SAF 补全前不删除 SFF fast_screen_policy.py 快筛重试依赖 保留为独立模块 5.2 风险与缓解 风险 影响 缓解 SAF 引擎输出与旧引擎不一致 策略排名变化 严格对比测试，误差 \u003e 0.01% 则回退 迁移期间开发中断 影响日常工作 Phase 1 可并行，不影响 SFF/TSS 运行 SAF data provider 性能下降 回测速度变慢 验证性能无显著下降 5.3 依赖关系 Phase 1: SAF 内核补全（可 5 人并行） ├── 1.1 TimeSeriesEngine ← 无依赖，立即可启动 ├── 1.3 Sandbox ← 无依赖，立即可启动 ├── 1.5 DataProvider ← 无依赖，立即可启动 ├── 1.8 PairEngine ← 无依赖，立即可启动 ├── 1.2 PanelEngine ← 无依赖，立即可启动（可与1.1并行） ├── 1.4 CostModel ← 依赖 1.1 ├── 1.6 Scoring ← 依赖 1.1, 1.2 └── 1.7 Slices ← 依赖 1.6 Phase 2: SFF 迁移 ← 依赖 1.1, 1.2, 1.3 Phase 3: TSS 迁移 ← 依赖 1.5 Phase 4: 清理 ← 依赖 Phase 2, 3 完成 6. 推荐执行顺序 第一步（今天即可开始） 创建 SAF 分支并补全 Phase 1.1-1.3（时序引擎核心）\n第二步（明天） 完成 Phase 1.4-1.6（数据+评分）\n第三步 Phase 2 SFF 迁移，废弃 legacy/evaluate/engine.py\n第四步 Phase 3 TSS 迁移，废弃 legacy/data_loader.py\n第五步 Phase 4 清理与验证\n7. 一句话总结 以 SAF 为共享内核，废弃 evaluate/engine.py、scorer.py、data_loader.py，其余保留在应用层。\n8. 并行执行方案（更新 2026-04-13） 8.1 依赖关系图（已更新） Phase 1: SAF 内核补全 ✅ 已完成 │ ├── 1.1 TimeSeriesEngine ──────────┐ ✅ 已完成 ├── 1.2 PanelEngine ───────────────┤ ✅ 已完成 ├── 1.3 Sandbox ───────────────────┤ ✅ 已完成 ├── 1.4 CostModel ─────────────────┘ ✅ 已完成 ├── 1.5 CapabilityResolver ───────── ✅ 已完成 │ │ ⚠️ 剩余工作 │ ├── 1.6 Scoring ───────────────────┐ ⚠️ 待实现 └── 1.7 Slices ───────────────────┘ ⚠️ 待实现（依赖1.6） │ │ Phase 2: SFF 迁移 (依赖1.6) │ Phase 3: TSS 迁移 (依赖1.6) │ ↓ │ 可并行执行 8.2 Phase 1 并行任务分配（更新） # 任务 状态 1.1 TimeSeriesEngine ✅ 已完成 1.2 PanelEngine ✅ 已完成 1.3 Sandbox ✅ 已完成 1.4 CostModel ✅ 已完成 1.5 CapabilityResolver ✅ 已完成 1.6 Scoring ⚠️ 待实现 1.7 Slices ⚠️ 待实现 1.8 PairEngine ⚠️ 待实现 任务 依赖 可并行 1.1 TimeSeriesEngine 无 ✅ 1.2 PanelEngine 无 ✅ 1.3 Sandbox 无 ✅ 1.5 DataProvider 无 ✅ 1.8 PairEngine 无 ✅ 1.4 CostModel 1.1 ⏳ 等 1.1 1.6 Scoring 1.1, 1.2 ⏳ 等 1.1+1.2 1.7 Slices 1.6 ⏳ 等 1.6 8.3 Phase 2/3 并行（更新） 人员 任务 Phase 1 依赖 人 1 Phase 2: SFF wrapper 适配 1.6 Scoring 完成后 人 2 Phase 3: TSS wrapper 适配 1.6 Scoring 完成后 注：Engine 部分 (1.1-1.5) 已完成，Phase 2/3 可在 1.6 完成后立即开始。\n8.4 推荐分工方案（更新 2026-04-13） Phase 1 核心已完成，剩余工作大幅减少\n简化分工（1-2 人即可） 人 1 (主): ├── Phase 1.6 Scoring (P1) ← 最高优先级 ├── Phase 1.7 Slices (P2) └── Phase 2: SFF wrapper 适配 人 2 (可选): ├── Phase 1.8 PairEngine (P3) ├── Phase 3: TSS wrapper 适配 └── DataProvider 实现对齐 原 5 人并行方案已不需要 - Phase 1 核心引擎已由 SAF 重构完成。\n8.5 任务启动条件（更新 2026-04-13） 任务 启动条件 状态 1.1, 1.2, 1.3, 1.4, 1.5 ✅ 已完成 - 1.6 6维评分 立即可启动 ⚠️ 待实现 1.7 切片评分 1.6 完成后 ⚠️ 待实现 1.8 PairEngine 可并行 ⚠️ 待实现 Phase 2 SFF迁移 1.6 完成后可开始 engine 部分 等待 1.6 Phase 3 TSS迁移 1.6 完成后可开始 等待 1.6 8.6 关键路径（更新 2026-04-13） 关键路径: 1.6 → 1.7 → Phase 2/3 → Phase 4 最短工期估算（已更新）: - Phase 1: 1.1,1.2,1.3,1.4,1.5 ✅ 已完成 - Phase 1.6 (6维评分): 约 0.5 天 - Phase 1.7 (切片评分): 约 0.5 天 - Phase 2,3 (SFF/TSS wrapper): 1-2 天 (并行) - Phase 4 (清理验证): 0.5 天 总计剩余: 2-3 个工作日（原估算 5 天，已大幅缩短） 8.7 风险控制（更新） 风险 缓解 Phase 1 已完成 ✅ 核心引擎已验证通过 1.6/1.7 延期 阻塞 Phase 2 的 scorer 部分，但 engine 部分可先做 人力不足 优先保证 1.6 (评分)，1.7/1.8 可后续补充 ",
+  "wordCount" : "1628",
+  "inLanguage": "en",
+  "datePublished": "0001-01-01T00:00:00Z",
+  "dateModified": "0001-01-01T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "James Gan"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://jamesgan.com/qmt/saf_migration_plan_20260413/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "James Gan",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://jamesgan.com/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://jamesgan.com/" accesskey="h" title="James Gan (Alt + H)">James Gan</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="https://jamesgan.com/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://jamesgan.com/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://jamesgan.com/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://jamesgan.com/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      
+    </h1>
+    <div class="post-meta"><span>James Gan</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="saf-重构迁移方案">SAF 重构迁移方案<a hidden class="anchor" aria-hidden="true" href="#saf-重构迁移方案">#</a></h1>
+<p><strong>日期</strong>: 2026-04-13
+<strong>目标</strong>: 将 SAF 提升到与 StrategeFactoryFlow/TSS 并列层次，废弃两者中与 SAF 重叠的部分
+<strong>范围</strong>: <code>StrategeFactoryFlow</code>, <code>TSS</code>, <code>SAF</code> 三个项目的回测/数据/评估层</p>
+<hr>
+<h2 id="1-当前架构状态">1. 当前架构状态<a hidden class="anchor" aria-hidden="true" href="#1-当前架构状态">#</a></h2>
+<h3 id="11-三个项目现状">1.1 三个项目现状<a hidden class="anchor" aria-hidden="true" href="#11-三个项目现状">#</a></h3>
+<pre tabindex="0"><code>qmt/
+├── SAF/                          # 新共享内核（重构骨架）
+│   ├── src/saf/
+│   │   ├── capability/           # ✅ 策略能力检测
+│   │   ├── data/                # ⚠️ 框架完成，实现缺失
+│   │   ├── engine/               # ⚠️ 框架完成，时序实现待补全
+│   │   ├── evaluation/           # ⚠️ 框架完成，评分实现缺失
+│   │   ├── models/               # ✅ 强类型对象模型
+│   │   ├── orchestrator/         # ✅ 编排层框架
+│   │   ├── storage/              # ✅ 接口定义
+│   │   └── strategy/             # ✅ 策略解析器
+│   └── tests/
+│
+├── StrategeFactoryFlow/          # 策略工厂（待迁移/废弃）
+│   ├── evaluate/
+│   │   ├── engine.py            # ❌ 与 SAF engine 重复 → 废弃
+│   │   ├── fast_screen_policy.py # ✅ 保留（SAF 暂无对应）
+│   │   └── scorer.py            # ⚠️ 与 SAF evaluation 重复 → 迁移/废弃
+│   ├── run_evaluate.py          # ✅ 保留（批量编排）
+│   └── pipeline/                 # ⚠️ 部分迁移
+│
+└── tss/                          # 策略运营（待迁移/废弃）
+    ├── data_loader.py            # ❌ 与 SAF data 重复 → 废弃
+    ├── run_*_comparison.py       # ⚠️ 保留（多策略对比）
+    ├── vnpy_backtest_runner.py   # ⚠️ SAF vnpy_adapter 替代
+    └── ...
+</code></pre><h3 id="12-saf-能力-vs-现有实现-2026-04-13-更新">1.2 SAF 能力 vs 现有实现 (2026-04-13 更新)<a hidden class="anchor" aria-hidden="true" href="#12-saf-能力-vs-现有实现-2026-04-13-更新">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>模块</th>
+          <th>SAF 现状</th>
+          <th>StrategeFactoryFlow</th>
+          <th>TSS</th>
+          <th>结论</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>策略拓扑检测</strong></td>
+          <td>✅ 完整</td>
+          <td>✅ 完整</td>
+          <td>❌ 无</td>
+          <td>SAF 优，废弃 SFF</td>
+      </tr>
+      <tr>
+          <td><strong>FailureCode</strong></td>
+          <td>✅ 完整</td>
+          <td>❌ 散落字符串</td>
+          <td>❌ 无</td>
+          <td>SAF 优，废弃 SFF</td>
+      </tr>
+      <tr>
+          <td><strong>对象模型</strong></td>
+          <td>✅ 完整</td>
+          <td>❌ pd.DataFrame</td>
+          <td>❌ 无</td>
+          <td>SAF 优</td>
+      </tr>
+      <tr>
+          <td><strong>时序回测引擎</strong></td>
+          <td>✅ 完整</td>
+          <td>✅ 完整</td>
+          <td>⚠️ 简单实现</td>
+          <td>SAF 已可替代 SFF</td>
+      </tr>
+      <tr>
+          <td><strong>截面回测引擎</strong></td>
+          <td>✅ 完整</td>
+          <td>✅ 完整</td>
+          <td>❌ 无</td>
+          <td>SAF 已可替代 SFF</td>
+      </tr>
+      <tr>
+          <td><strong>配对回测引擎</strong></td>
+          <td>⚠️ 骨架定义</td>
+          <td>❌ 无</td>
+          <td>❌ 无</td>
+          <td>SAF 框架已定义，实现待补</td>
+      </tr>
+      <tr>
+          <td><strong>vnpy 适配器</strong></td>
+          <td>⚠️ 骨架定义</td>
+          <td>❌ 无</td>
+          <td>✅ 完整</td>
+          <td>迁移到 SAF vnpy_adapter</td>
+      </tr>
+      <tr>
+          <td><strong>数据加载</strong></td>
+          <td>⚠️ 协议定义</td>
+          <td>❌ 直接用 DataService</td>
+          <td>✅ 完整</td>
+          <td>迁移 data_loader 到 SAF</td>
+      </tr>
+      <tr>
+          <td><strong>评分系统</strong></td>
+          <td>⚠️ 简化版</td>
+          <td>✅ 6维评分</td>
+          <td>❌ 无</td>
+          <td>迁移 6维到 SAF evaluation</td>
+      </tr>
+      <tr>
+          <td><strong>编排/批量</strong></td>
+          <td>✅ 框架完整</td>
+          <td>✅ 完整</td>
+          <td>⚠️ 脚本</td>
+          <td>SAF orchestrator 已可替代</td>
+      </tr>
+      <tr>
+          <td><strong>快筛重试</strong></td>
+          <td>❌ 无</td>
+          <td>✅ 完整</td>
+          <td>❌ 无</td>
+          <td>SFF 保留或迁移到 SAF</td>
+      </tr>
+  </tbody>
+</table>
+<hr>
+<h2 id="2-迁移原则">2. 迁移原则<a hidden class="anchor" aria-hidden="true" href="#2-迁移原则">#</a></h2>
+<h3 id="21-三不原则">2.1 三不原则<a hidden class="anchor" aria-hidden="true" href="#21-三不原则">#</a></h3>
+<ol>
+<li><strong>不删除代码</strong>：所有待废弃代码移入 <code>legacy/</code> 目录，保留历史</li>
+<li><strong>不中断开发</strong>：迁移期间现有流水线照常运行</li>
+<li><strong>不破坏接口</strong>：SAF 接口先稳定再对接</li>
+</ol>
+<h3 id="22-迁移顺序">2.2 迁移顺序<a hidden class="anchor" aria-hidden="true" href="#22-迁移顺序">#</a></h3>
+<pre tabindex="0"><code>Phase 1: 稳固 SAF 内核（共享层先完成）
+Phase 2: 废弃 StrategeFactoryFlow 中对应模块
+Phase 3: 废弃 TSS 中对应模块
+Phase 4: 清理 legacy/ 目录
+</code></pre><hr>
+<h2 id="3-完整迁移方案">3. 完整迁移方案<a hidden class="anchor" aria-hidden="true" href="#3-完整迁移方案">#</a></h2>
+<h3 id="31-phase-1-稳固-saf-内核--已完成-2026-04-13">3.1 Phase 1: 稳固 SAF 内核 ✅ 已完成 (2026-04-13)<a hidden class="anchor" aria-hidden="true" href="#31-phase-1-稳固-saf-内核--已完成-2026-04-13">#</a></h3>
+<p><strong>目标</strong>: 补全 SAF 中缺失的关键实现，使其能够承接废弃模块</p>
+<h4 id="已完成-">已完成 ✅<a hidden class="anchor" aria-hidden="true" href="#已完成-">#</a></h4>
+<table>
+  <thead>
+      <tr>
+          <th>#</th>
+          <th>任务</th>
+          <th>实现位置</th>
+          <th>状态</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>1.1</td>
+          <td>TimeSeriesExecutionEngine（含 equity curve）</td>
+          <td><code>saf/engine/time_series.py</code></td>
+          <td>✅ 已完成</td>
+      </tr>
+      <tr>
+          <td>1.2</td>
+          <td>PanelExecutionEngine（含 DataFrame 信号支持）</td>
+          <td><code>saf/engine/panel.py</code></td>
+          <td>✅ 已完成</td>
+      </tr>
+      <tr>
+          <td>1.3</td>
+          <td>Sandbox（超时、异常处理、DataFrame 支持）</td>
+          <td><code>saf/engine/sandbox.py</code></td>
+          <td>✅ 已完成</td>
+      </tr>
+      <tr>
+          <td>1.4</td>
+          <td>BacktestConfig + CostModel</td>
+          <td><code>saf/engine/config.py</code></td>
+          <td>✅ 已完成</td>
+      </tr>
+      <tr>
+          <td>1.5</td>
+          <td>CapabilityResolver + StrategyTopologyDetector</td>
+          <td><code>saf/capability/resolver.py</code>, <code>detector.py</code></td>
+          <td>✅ 已完成</td>
+      </tr>
+      <tr>
+          <td>-</td>
+          <td>CapabilityResult dataclass + SupportMatrix</td>
+          <td><code>saf/capability/support_matrix.py</code></td>
+          <td>✅ 已完成</td>
+      </tr>
+      <tr>
+          <td>-</td>
+          <td>JobExecutorImpl + BatchExecutor</td>
+          <td><code>saf/orchestrator/orchestrator.py</code>, <code>batch.py</code></td>
+          <td>✅ 已完成</td>
+      </tr>
+      <tr>
+          <td>-</td>
+          <td>RetryPolicy + RetryableError</td>
+          <td><code>saf/orchestrator/retry.py</code></td>
+          <td>✅ 已完成</td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>Architecture</strong>: <code>StrategyKind</code> (业务分类) → <code>CapabilityResolver</code> → <code>StrategyTopology</code> (执行路由) → <code>ExecutionEngine</code></p>
+<pre tabindex="0"><code>StrategyKind.TIME_SERIES     → StrategyTopology.TIME_SERIES     → TimeSeriesExecutionEngine
+StrategyKind.CROSS_SECTIONAL → StrategyTopology.CROSS_SECTIONAL → PanelExecutionEngine
+StrategyKind.PAIRS           → StrategyTopology.PAIR           → PairExecutionEngine (待实现)
+</code></pre><h4 id="待完成-">待完成 ⚠️<a hidden class="anchor" aria-hidden="true" href="#待完成-">#</a></h4>
+<table>
+  <thead>
+      <tr>
+          <th>#</th>
+          <th>任务</th>
+          <th>实现位置</th>
+          <th>状态</th>
+          <th>优先级</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>1.6</td>
+          <td>迁移 6 维评分</td>
+          <td><code>saf/evaluation/scorer.py</code></td>
+          <td>⚠️ 待实现</td>
+          <td>P1</td>
+      </tr>
+      <tr>
+          <td>1.7</td>
+          <td>迁移切片评分</td>
+          <td><code>saf/evaluation/slices.py</code></td>
+          <td>⚠️ 待实现</td>
+          <td>P2</td>
+      </tr>
+      <tr>
+          <td>1.8</td>
+          <td>PairBundle + PairExecutionEngine</td>
+          <td><code>saf/engine/pair.py</code></td>
+          <td>⚠️ 骨架待实现</td>
+          <td>P3</td>
+      </tr>
+  </tbody>
+</table>
+<h4 id="废弃模块对照表更新">废弃模块对照表（更新）<a hidden class="anchor" aria-hidden="true" href="#废弃模块对照表更新">#</a></h4>
+<table>
+  <thead>
+      <tr>
+          <th>待废弃（SFF）</th>
+          <th>替代（SAF）</th>
+          <th>状态</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>evaluate/engine.py</code> 时序</td>
+          <td><code>engine/time_series.py</code></td>
+          <td>✅ SAF 已完成</td>
+      </tr>
+      <tr>
+          <td><code>evaluate/engine.py</code> 截面</td>
+          <td><code>engine/panel.py</code></td>
+          <td>✅ SAF 已完成</td>
+      </tr>
+      <tr>
+          <td><code>evaluate/scorer.py</code></td>
+          <td><code>evaluation/scorer.py</code></td>
+          <td>⚠️ SAF 简化版已有，6维待迁移</td>
+      </tr>
+      <tr>
+          <td><code>evaluate/fast_screen_policy.py</code></td>
+          <td>新建 <code>evaluation/fast_screen.py</code></td>
+          <td>❌ 待新建</td>
+      </tr>
+      <tr>
+          <td><code>pipeline/</code></td>
+          <td><code>orchestrator/</code></td>
+          <td>⚠️ 部分重叠</td>
+      </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+      <tr>
+          <th>待废弃（TSS）</th>
+          <th>替代（SAF）</th>
+          <th>状态</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>data_loader.py</code></td>
+          <td><code>data/providers.py</code></td>
+          <td>⚠️ 协议定义已有，实现待迁移</td>
+      </tr>
+      <tr>
+          <td><code>vnpy_backtest_runner.py</code></td>
+          <td><code>engine/vnpy_adapter.py</code></td>
+          <td>⚠️ 骨架已有，实现待对齐</td>
+      </tr>
+  </tbody>
+</table>
+<p><strong>剩余工作量估算</strong>: 2-3 人天（原计划 5 人天，已完成大部分）</p>
+<hr>
+<h3 id="32-phase-2-迁移-strategefactoryflow2-3-天">3.2 Phase 2: 迁移 StrategeFactoryFlow（2-3 天）<a hidden class="anchor" aria-hidden="true" href="#32-phase-2-迁移-strategefactoryflow2-3-天">#</a></h3>
+<h4 id="21-目录重组">2.1 目录重组<a hidden class="anchor" aria-hidden="true" href="#21-目录重组">#</a></h4>
+<pre tabindex="0"><code>StrategeFactoryFlow/
+├── SAF/                    # 保持（作为独立包）
+├── SAF_new/                # 新建：指向 qmt/SAF/src/saf
+│   └── (symlink or pyproject path)
+├── legacy/                 # 新建：废弃代码归档
+│   ├── evaluate/
+│   │   ├── engine.py      # 移入（废弃）
+│   │   └── scorer.py     # 移入（废弃）
+│   └── pipeline/          # 移入（废弃）
+├── evaluate/               # 重写：对 SAF 的 thin wrapper
+│   ├── engine_adapter.py   # 新建：SAF engine 适配器
+│   ├── scorer_adapter.py  # 新建：SAF scorer 适配器
+│   └── fast_screen.py     # 保留（SAF 暂无）
+├── run_evaluate.py        # 修改：调用 SAF_new
+└── ...
+</code></pre><h4 id="22-迁移步骤">2.2 迁移步骤<a hidden class="anchor" aria-hidden="true" href="#22-迁移步骤">#</a></h4>
+<p><strong>Step 1</strong>: 创建 <code>legacy/</code> 目录，移入废弃代码</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>mkdir -p StrategeFactoryFlow/legacy/evaluate
+</span></span><span style="display:flex;"><span>mv StrategeFactoryFlow/evaluate/engine.py legacy/evaluate/
+</span></span><span style="display:flex;"><span>mv StrategeFactoryFlow/evaluate/scorer.py legacy/evaluate/
+</span></span><span style="display:flex;"><span>mv StrategeFactoryFlow/pipeline legacy/pipeline
+</span></span></code></pre></div><p><strong>Step 2</strong>: 创建 <code>evaluate/</code> 新实现（thin wrapper）</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#75715e"># evaluate/engine_adapter.py</span>
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> saf.engine <span style="color:#f92672">import</span> TimeSeriesExecutionEngine, PanelExecutionEngine
+</span></span><span style="display:flex;"><span><span style="color:#f92672">from</span> saf.engine.protocols <span style="color:#f92672">import</span> BacktestRequest, BacktestBundle
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">SAFTimeSeriesAdapter</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;&#34;&#34;SFF wrapper around SAF TimeSeriesExecutionEngine.&#34;&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">SAFPanelAdapter</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;&#34;&#34;SFF wrapper around SAF PanelExecutionEngine.&#34;&#34;&#34;</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#f92672">...</span>
+</span></span></code></pre></div><p><strong>Step 3</strong>: 更新 <code>run_evaluate.py</code> 使用 SAF</p>
+<p><strong>Step 4</strong>: 保留以下模块（不迁移到 SAF）:</p>
+<ul>
+<li><code>fast_screen_policy.py</code> → <code>evaluate/fast_screen.py</code></li>
+<li><code>run_pipeline.py</code> → 评估后处理，保留</li>
+<li><code>pipeline/backfill_claims.py</code> → 迁移到 SAF 或保留</li>
+</ul>
+<hr>
+<h3 id="33-phase-3-迁移-tss1-2-天">3.3 Phase 3: 迁移 TSS（1-2 天）<a hidden class="anchor" aria-hidden="true" href="#33-phase-3-迁移-tss1-2-天">#</a></h3>
+<h4 id="31-目录重组">3.1 目录重组<a hidden class="anchor" aria-hidden="true" href="#31-目录重组">#</a></h4>
+<pre tabindex="0"><code>tss/
+├── legacy/                 # 新建：废弃代码归档
+│   ├── data_loader.py
+│   ├── run_*_comparison.py  # 保留（多策略对比，非回测核心）
+│   └── vnpy_*.py
+├── SAF/                    # 新建：指向 qmt/SAF/src/saf
+├── data/                   # 重写：SAF data provider 封装
+│   └── provider_adapter.py
+└── ...
+</code></pre><h4 id="32-迁移步骤">3.2 迁移步骤<a hidden class="anchor" aria-hidden="true" href="#32-迁移步骤">#</a></h4>
+<p><strong>Step 1</strong>: 创建 <code>legacy/</code> 目录</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span>mkdir -p tss/legacy
+</span></span><span style="display:flex;"><span>mv tss/data_loader.py tss/legacy/
+</span></span></code></pre></div><p><strong>Step 2</strong>: 实现 <code>tss/data/</code> 基于 SAF 协议</p>
+<p><strong>Step 3</strong>: 废弃 <code>vnpy_backtest_runner.py</code>，使用 <code>SAF/engine/vnpy_adapter.py</code></p>
+<hr>
+<h3 id="34-phase-4-清理与验证1-天">3.4 Phase 4: 清理与验证（1 天）<a hidden class="anchor" aria-hidden="true" href="#34-phase-4-清理与验证1-天">#</a></h3>
+<h4 id="41-最终目录结构">4.1 最终目录结构<a hidden class="anchor" aria-hidden="true" href="#41-最终目录结构">#</a></h4>
+<pre tabindex="0"><code>qmt/
+├── SAF/                              # 统一共享内核
+│   └── src/saf/
+│       ├── capability/                # ✅ 完整
+│       ├── data/                     # ✅ 完整（迁移后）
+│       ├── engine/                   # ✅ 完整（迁移后）
+│       ├── evaluation/                # ✅ 完整（迁移后）
+│       ├── models/                   # ✅ 完整
+│       ├── orchestrator/             # ✅ 完整（迁移后）
+│       ├── strategy/                  # ✅ 完整
+│       └── storage/                   # ✅ 完整
+│
+├── StrategeFactoryFlow/              # 策略工厂应用
+│   ├── legacy/                       # 归档（可删除）
+│   ├── evaluate/                     # SAF thin wrapper
+│   │   ├── engine_adapter.py
+│   │   ├── scorer_adapter.py
+│   │   └── fast_screen.py
+│   ├── run_evaluate.py               # 批量评估入口
+│   └── ...
+│
+├── tss/                              # 策略运营应用
+│   ├── legacy/                       # 归档（可删除）
+│   ├── data/                         # SAF data wrapper
+│   ├── strategies/                   # 策略池
+│   └── ...
+│
+└── qdata/                            # 数据服务（保留，供 SAF 调用）
+</code></pre><h4 id="42-验证清单">4.2 验证清单<a hidden class="anchor" aria-hidden="true" href="#42-验证清单">#</a></h4>
+<ul>
+<li><input disabled="" type="checkbox"> SAF 时序引擎输出与 SFF 旧引擎一致（误差 &lt; 0.01%）</li>
+<li><input disabled="" type="checkbox"> SAF 截面引擎输出与 SFF 旧引擎一致</li>
+<li><input disabled="" type="checkbox"> SAF 评分系统输出与 SFF 旧系统一致</li>
+<li><input disabled="" type="checkbox"> <code>run_evaluate.py</code> 端到端运行成功</li>
+<li><input disabled="" type="checkbox"> TSS 数据加载使用 SAF 协议</li>
+<li><input disabled="" type="checkbox"> 所有测试通过</li>
+</ul>
+<hr>
+<h2 id="4-详细任务分解">4. 详细任务分解<a hidden class="anchor" aria-hidden="true" href="#4-详细任务分解">#</a></h2>
+<h3 id="41-phase-1-任务saf-内核补全-已完成">4.1 Phase 1 任务（SAF 内核补全）✅ 已完成<a hidden class="anchor" aria-hidden="true" href="#41-phase-1-任务saf-内核补全-已完成">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>#</th>
+          <th>任务</th>
+          <th>状态</th>
+          <th>优先级</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>1.1</td>
+          <td>迁移 SFF <code>SignalBacktester</code> 逻辑到 SAF <code>TimeSeriesExecutionEngine</code></td>
+          <td>✅ 已完成</td>
+          <td>P0</td>
+      </tr>
+      <tr>
+          <td>1.2</td>
+          <td>迁移 SFF <code>CrossSectionalBacktester</code> 逻辑到 SAF <code>PanelExecutionEngine</code></td>
+          <td>✅ 已完成</td>
+          <td>P0</td>
+      </tr>
+      <tr>
+          <td>1.3</td>
+          <td>实现 <code>execute_signal_function</code> 超时与异常处理</td>
+          <td>✅ 已完成</td>
+          <td>P0</td>
+      </tr>
+      <tr>
+          <td>1.4</td>
+          <td>迁移 <code>CostModel</code> 和成本计算到 SAF <code>engine/config.py</code></td>
+          <td>✅ 已完成</td>
+          <td>P1</td>
+      </tr>
+      <tr>
+          <td>1.5</td>
+          <td>CapabilityResolver + StrategyTopologyDetector</td>
+          <td>✅ 已完成</td>
+          <td>P0</td>
+      </tr>
+      <tr>
+          <td>1.6</td>
+          <td>迁移 SFF 6维评分到 SAF <code>evaluation/scorer.py</code></td>
+          <td>⚠️ 待实现</td>
+          <td>P1</td>
+      </tr>
+      <tr>
+          <td>1.7</td>
+          <td>迁移切片评分到 SAF <code>evaluation/slices.py</code></td>
+          <td>⚠️ 待实现</td>
+          <td>P2</td>
+      </tr>
+      <tr>
+          <td>1.8</td>
+          <td>实现 <code>PairBundle</code> 和 <code>PairExecutionEngine</code> 骨架</td>
+          <td>⚠️ 待实现</td>
+          <td>P3</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="42-phase-2-任务sff-迁移">4.2 Phase 2 任务（SFF 迁移）<a hidden class="anchor" aria-hidden="true" href="#42-phase-2-任务sff-迁移">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>#</th>
+          <th>任务</th>
+          <th>负责人</th>
+          <th>优先级</th>
+          <th>依赖</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>2.1</td>
+          <td>创建 <code>legacy/</code> 并移入废弃代码</td>
+          <td>-</td>
+          <td>P0</td>
+          <td>1.1, 1.2, 1.3</td>
+      </tr>
+      <tr>
+          <td>2.2</td>
+          <td>实现 <code>evaluate/engine_adapter.py</code> (SAF wrapper)</td>
+          <td>-</td>
+          <td>P0</td>
+          <td>1.1, 1.2</td>
+      </tr>
+      <tr>
+          <td>2.3</td>
+          <td>实现 <code>evaluate/scorer_adapter.py</code> (SAF wrapper)</td>
+          <td>-</td>
+          <td>P0</td>
+          <td>1.6</td>
+      </tr>
+      <tr>
+          <td>2.4</td>
+          <td>更新 <code>run_evaluate.py</code> 使用 SAF adapter</td>
+          <td>-</td>
+          <td>P0</td>
+          <td>2.2, 2.3</td>
+      </tr>
+      <tr>
+          <td>2.5</td>
+          <td>保留 <code>fast_screen_policy.py</code> 为 <code>evaluate/fast_screen.py</code></td>
+          <td>-</td>
+          <td>P1</td>
+          <td>无</td>
+      </tr>
+      <tr>
+          <td>2.6</td>
+          <td>端到端验证</td>
+          <td>-</td>
+          <td>P0</td>
+          <td>2.4</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="43-phase-3-任务tss-迁移">4.3 Phase 3 任务（TSS 迁移）<a hidden class="anchor" aria-hidden="true" href="#43-phase-3-任务tss-迁移">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>#</th>
+          <th>任务</th>
+          <th>负责人</th>
+          <th>优先级</th>
+          <th>依赖</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>3.1</td>
+          <td>创建 <code>tss/legacy/</code> 并移入废弃代码</td>
+          <td>-</td>
+          <td>P0</td>
+          <td>1.5</td>
+      </tr>
+      <tr>
+          <td>3.2</td>
+          <td>实现 <code>tss/data/provider_adapter.py</code></td>
+          <td>-</td>
+          <td>P0</td>
+          <td>1.5</td>
+      </tr>
+      <tr>
+          <td>3.3</td>
+          <td>废弃 <code>vnpy_backtest_runner.py</code>，使用 SAF adapter</td>
+          <td>-</td>
+          <td>P1</td>
+          <td>1.1, 1.2</td>
+      </tr>
+      <tr>
+          <td>3.4</td>
+          <td>端到端验证</td>
+          <td>-</td>
+          <td>P0</td>
+          <td>3.2</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="44-phase-4-任务清理">4.4 Phase 4 任务（清理）<a hidden class="anchor" aria-hidden="true" href="#44-phase-4-任务清理">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>#</th>
+          <th>任务</th>
+          <th>负责人</th>
+          <th>优先级</th>
+          <th>依赖</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>4.1</td>
+          <td>删除 <code>legacy/</code> 目录（或保留备查）</td>
+          <td>-</td>
+          <td>P2</td>
+          <td>Phase 2, 3 完成</td>
+      </tr>
+      <tr>
+          <td>4.2</td>
+          <td>更新文档</td>
+          <td>-</td>
+          <td>P1</td>
+          <td>Phase 2, 3 完成</td>
+      </tr>
+      <tr>
+          <td>4.3</td>
+          <td>全面测试验证</td>
+          <td>-</td>
+          <td>P0</td>
+          <td>Phase 4 完成</td>
+      </tr>
+  </tbody>
+</table>
+<hr>
+<h2 id="5-影响评估">5. 影响评估<a hidden class="anchor" aria-hidden="true" href="#5-影响评估">#</a></h2>
+<h3 id="51-功能影响">5.1 功能影响<a hidden class="anchor" aria-hidden="true" href="#51-功能影响">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>废弃项</th>
+          <th>影响</th>
+          <th>缓解措施</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>SFF <code>engine.py</code></td>
+          <td>时序/截面回测依赖</td>
+          <td>SAF 补全前不删除</td>
+      </tr>
+      <tr>
+          <td>SFF <code>scorer.py</code></td>
+          <td>评分系统依赖</td>
+          <td>SAF 补全前不删除</td>
+      </tr>
+      <tr>
+          <td>TSS <code>data_loader.py</code></td>
+          <td>数据加载依赖</td>
+          <td>SAF 补全前不删除</td>
+      </tr>
+      <tr>
+          <td>SFF <code>fast_screen_policy.py</code></td>
+          <td>快筛重试依赖</td>
+          <td>保留为独立模块</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="52-风险与缓解">5.2 风险与缓解<a hidden class="anchor" aria-hidden="true" href="#52-风险与缓解">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>风险</th>
+          <th>影响</th>
+          <th>缓解</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>SAF 引擎输出与旧引擎不一致</td>
+          <td>策略排名变化</td>
+          <td>严格对比测试，误差 &gt; 0.01% 则回退</td>
+      </tr>
+      <tr>
+          <td>迁移期间开发中断</td>
+          <td>影响日常工作</td>
+          <td>Phase 1 可并行，不影响 SFF/TSS 运行</td>
+      </tr>
+      <tr>
+          <td>SAF data provider 性能下降</td>
+          <td>回测速度变慢</td>
+          <td>验证性能无显著下降</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="53-依赖关系">5.3 依赖关系<a hidden class="anchor" aria-hidden="true" href="#53-依赖关系">#</a></h3>
+<pre tabindex="0"><code>Phase 1: SAF 内核补全（可 5 人并行）
+├── 1.1 TimeSeriesEngine ← 无依赖，立即可启动
+├── 1.3 Sandbox ← 无依赖，立即可启动
+├── 1.5 DataProvider ← 无依赖，立即可启动
+├── 1.8 PairEngine ← 无依赖，立即可启动
+├── 1.2 PanelEngine ← 无依赖，立即可启动（可与1.1并行）
+├── 1.4 CostModel ← 依赖 1.1
+├── 1.6 Scoring ← 依赖 1.1, 1.2
+└── 1.7 Slices ← 依赖 1.6
+
+Phase 2: SFF 迁移 ← 依赖 1.1, 1.2, 1.3
+Phase 3: TSS 迁移 ← 依赖 1.5
+Phase 4: 清理 ← 依赖 Phase 2, 3 完成
+</code></pre><hr>
+<h2 id="6-推荐执行顺序">6. 推荐执行顺序<a hidden class="anchor" aria-hidden="true" href="#6-推荐执行顺序">#</a></h2>
+<h3 id="第一步今天即可开始">第一步（今天即可开始）<a hidden class="anchor" aria-hidden="true" href="#第一步今天即可开始">#</a></h3>
+<p>创建 SAF 分支并补全 Phase 1.1-1.3（时序引擎核心）</p>
+<h3 id="第二步明天">第二步（明天）<a hidden class="anchor" aria-hidden="true" href="#第二步明天">#</a></h3>
+<p>完成 Phase 1.4-1.6（数据+评分）</p>
+<h3 id="第三步">第三步<a hidden class="anchor" aria-hidden="true" href="#第三步">#</a></h3>
+<p>Phase 2 SFF 迁移，废弃 <code>legacy/evaluate/engine.py</code></p>
+<h3 id="第四步">第四步<a hidden class="anchor" aria-hidden="true" href="#第四步">#</a></h3>
+<p>Phase 3 TSS 迁移，废弃 <code>legacy/data_loader.py</code></p>
+<h3 id="第五步">第五步<a hidden class="anchor" aria-hidden="true" href="#第五步">#</a></h3>
+<p>Phase 4 清理与验证</p>
+<hr>
+<h2 id="7-一句话总结">7. 一句话总结<a hidden class="anchor" aria-hidden="true" href="#7-一句话总结">#</a></h2>
+<blockquote>
+<p><strong>以 SAF 为共享内核，废弃 <code>evaluate/engine.py</code>、<code>scorer.py</code>、<code>data_loader.py</code>，其余保留在应用层。</strong></p>
+</blockquote>
+<hr>
+<h2 id="8-并行执行方案更新-2026-04-13">8. 并行执行方案（更新 2026-04-13）<a hidden class="anchor" aria-hidden="true" href="#8-并行执行方案更新-2026-04-13">#</a></h2>
+<h3 id="81-依赖关系图已更新">8.1 依赖关系图（已更新）<a hidden class="anchor" aria-hidden="true" href="#81-依赖关系图已更新">#</a></h3>
+<pre tabindex="0"><code>Phase 1: SAF 内核补全 ✅ 已完成
+│
+├── 1.1 TimeSeriesEngine ──────────┐ ✅ 已完成
+├── 1.2 PanelEngine ───────────────┤ ✅ 已完成
+├── 1.3 Sandbox ───────────────────┤ ✅ 已完成
+├── 1.4 CostModel ─────────────────┘ ✅ 已完成
+├── 1.5 CapabilityResolver ───────── ✅ 已完成
+│
+│    ⚠️ 剩余工作
+│
+├── 1.6 Scoring ───────────────────┐ ⚠️ 待实现
+└── 1.7 Slices ───────────────────┘ ⚠️ 待实现（依赖1.6）
+         │
+         │    Phase 2: SFF 迁移 (依赖1.6)
+         │    Phase 3: TSS 迁移 (依赖1.6)
+         │         ↓
+         │    可并行执行
+</code></pre><h3 id="82-phase-1-并行任务分配更新">8.2 Phase 1 并行任务分配（更新）<a hidden class="anchor" aria-hidden="true" href="#82-phase-1-并行任务分配更新">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>#</th>
+          <th>任务</th>
+          <th>状态</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>1.1</strong> TimeSeriesEngine</td>
+          <td>✅ 已完成</td>
+          <td></td>
+      </tr>
+      <tr>
+          <td><strong>1.2</strong> PanelEngine</td>
+          <td>✅ 已完成</td>
+          <td></td>
+      </tr>
+      <tr>
+          <td><strong>1.3</strong> Sandbox</td>
+          <td>✅ 已完成</td>
+          <td></td>
+      </tr>
+      <tr>
+          <td><strong>1.4</strong> CostModel</td>
+          <td>✅ 已完成</td>
+          <td></td>
+      </tr>
+      <tr>
+          <td><strong>1.5</strong> CapabilityResolver</td>
+          <td>✅ 已完成</td>
+          <td></td>
+      </tr>
+      <tr>
+          <td><strong>1.6</strong> Scoring</td>
+          <td>⚠️ 待实现</td>
+          <td></td>
+      </tr>
+      <tr>
+          <td><strong>1.7</strong> Slices</td>
+          <td>⚠️ 待实现</td>
+          <td></td>
+      </tr>
+      <tr>
+          <td><strong>1.8</strong> PairEngine</td>
+          <td>⚠️ 待实现</td>
+          <td></td>
+      </tr>
+  </tbody>
+</table>
+<table>
+  <thead>
+      <tr>
+          <th>任务</th>
+          <th>依赖</th>
+          <th>可并行</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>1.1</strong> TimeSeriesEngine</td>
+          <td>无</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td><strong>1.2</strong> PanelEngine</td>
+          <td>无</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td><strong>1.3</strong> Sandbox</td>
+          <td>无</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td><strong>1.5</strong> DataProvider</td>
+          <td>无</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td><strong>1.8</strong> PairEngine</td>
+          <td>无</td>
+          <td>✅</td>
+      </tr>
+      <tr>
+          <td><strong>1.4</strong> CostModel</td>
+          <td>1.1</td>
+          <td>⏳ 等 1.1</td>
+      </tr>
+      <tr>
+          <td><strong>1.6</strong> Scoring</td>
+          <td>1.1, 1.2</td>
+          <td>⏳ 等 1.1+1.2</td>
+      </tr>
+      <tr>
+          <td><strong>1.7</strong> Slices</td>
+          <td>1.6</td>
+          <td>⏳ 等 1.6</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="83-phase-23-并行更新">8.3 Phase 2/3 并行（更新）<a hidden class="anchor" aria-hidden="true" href="#83-phase-23-并行更新">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>人员</th>
+          <th>任务</th>
+          <th>Phase 1 依赖</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><strong>人 1</strong></td>
+          <td>Phase 2: SFF wrapper 适配</td>
+          <td>1.6 Scoring 完成后</td>
+      </tr>
+      <tr>
+          <td><strong>人 2</strong></td>
+          <td>Phase 3: TSS wrapper 适配</td>
+          <td>1.6 Scoring 完成后</td>
+      </tr>
+  </tbody>
+</table>
+<blockquote>
+<p>注：Engine 部分 (1.1-1.5) 已完成，Phase 2/3 可在 1.6 完成后立即开始。</p>
+</blockquote>
+<h3 id="84-推荐分工方案更新-2026-04-13">8.4 推荐分工方案（更新 2026-04-13）<a hidden class="anchor" aria-hidden="true" href="#84-推荐分工方案更新-2026-04-13">#</a></h3>
+<blockquote>
+<p>Phase 1 核心已完成，剩余工作大幅减少</p>
+</blockquote>
+<h4 id="简化分工1-2-人即可">简化分工（1-2 人即可）<a hidden class="anchor" aria-hidden="true" href="#简化分工1-2-人即可">#</a></h4>
+<pre tabindex="0"><code>人 1 (主):
+├── Phase 1.6 Scoring (P1) ← 最高优先级
+├── Phase 1.7 Slices (P2)
+└── Phase 2: SFF wrapper 适配
+
+人 2 (可选):
+├── Phase 1.8 PairEngine (P3)
+├── Phase 3: TSS wrapper 适配
+└── DataProvider 实现对齐
+</code></pre><p><strong>原 5 人并行方案已不需要</strong> - Phase 1 核心引擎已由 SAF 重构完成。</p>
+<h3 id="85-任务启动条件更新-2026-04-13">8.5 任务启动条件（更新 2026-04-13）<a hidden class="anchor" aria-hidden="true" href="#85-任务启动条件更新-2026-04-13">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>任务</th>
+          <th>启动条件</th>
+          <th>状态</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>1.1, 1.2, 1.3, 1.4, 1.5</td>
+          <td>✅ 已完成</td>
+          <td>-</td>
+      </tr>
+      <tr>
+          <td>1.6 6维评分</td>
+          <td><strong>立即可启动</strong></td>
+          <td>⚠️ 待实现</td>
+      </tr>
+      <tr>
+          <td>1.7 切片评分</td>
+          <td>1.6 完成后</td>
+          <td>⚠️ 待实现</td>
+      </tr>
+      <tr>
+          <td>1.8 PairEngine</td>
+          <td>可并行</td>
+          <td>⚠️ 待实现</td>
+      </tr>
+      <tr>
+          <td>Phase 2 SFF迁移</td>
+          <td>1.6 完成后可开始 engine 部分</td>
+          <td>等待 1.6</td>
+      </tr>
+      <tr>
+          <td>Phase 3 TSS迁移</td>
+          <td>1.6 完成后可开始</td>
+          <td>等待 1.6</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="86-关键路径更新-2026-04-13">8.6 关键路径（更新 2026-04-13）<a hidden class="anchor" aria-hidden="true" href="#86-关键路径更新-2026-04-13">#</a></h3>
+<pre tabindex="0"><code>关键路径: 1.6 → 1.7 → Phase 2/3 → Phase 4
+最短工期估算（已更新）:
+- Phase 1: 1.1,1.2,1.3,1.4,1.5 ✅ 已完成
+- Phase 1.6 (6维评分): 约 0.5 天
+- Phase 1.7 (切片评分): 约 0.5 天
+- Phase 2,3 (SFF/TSS wrapper): 1-2 天 (并行)
+- Phase 4 (清理验证): 0.5 天
+总计剩余: 2-3 个工作日（原估算 5 天，已大幅缩短）
+</code></pre><h3 id="87-风险控制更新">8.7 风险控制（更新）<a hidden class="anchor" aria-hidden="true" href="#87-风险控制更新">#</a></h3>
+<table>
+  <thead>
+      <tr>
+          <th>风险</th>
+          <th>缓解</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Phase 1 已完成</td>
+          <td>✅ 核心引擎已验证通过</td>
+      </tr>
+      <tr>
+          <td>1.6/1.7 延期</td>
+          <td>阻塞 Phase 2 的 scorer 部分，但 engine 部分可先做</td>
+      </tr>
+      <tr>
+          <td>人力不足</td>
+          <td>优先保证 1.6 (评分)，1.7/1.8 可后续补充</td>
+      </tr>
+  </tbody>
+</table>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://jamesgan.com/">James Gan</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

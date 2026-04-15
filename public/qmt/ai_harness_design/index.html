@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>James Gan</title>
+<meta name="keywords" content="">
+<meta name="description" content="QMT AI Harness 工程与扩展防线设计
+
+文件性质: 架构决策增补草案 (针对 Blueprint 致命缺陷的修复)
+重点目标: 彻底消除大模型在金融交易中的“看图作文”幻觉，并加固周边基建的容错能力。
+
+
+专项一：AI Harness 维度隔离工程设计 (解决缺陷3)
+为了防止 AI 因为迎合设定的“多空人设”而产生数据幻觉，我们需要在底层设计一套**特征路由与盲区隔离（Harness）**机制。
+1. 核心设计思想：剥夺全知全能的视角
+过去我们将包含 OHLC/技术指标/财务面/新闻 的整个巨大 JSON 广播给所有特工。
+在全新的 Harness 设计下，系统只通过“守门人 (ContextRouter)”对数据进行脱敏切分后再下发。
+2. 维度特工阵列 (Dimensional Agents)
+A. 技术派特工 (Technical Agent)
+
+看到的数据: 纯 K 线形态、MA60 均线、MACD/BOLL 极值点、价格相对强度。
+被屏蔽的数据: 估值 PE、公司名字、新闻利好。
+任务: 纯粹从图形和博弈阻力位出发，哪怕公司马上退市，只要底背离了也必须说看多。
+
+B. 价值派特工 (Fundamental Agent)
+
+看到的数据: 历史 5 年 PE/PB 绝对分位值、ROE 变化、当前行业平均市盈率。
+被屏蔽的数据: K 线形态走势、短线暴涨暴跌的惊悚新闻。
+任务: 冷血计算护城河与折价率。只要低于 30% 分位即给出买点，哪怕天天跌板。
+
+C. 资金/情绪面特工 (Sentiment Agent)
+
+看到的数据: volume_shadow (量影)、大单净流入、外部飞书资讯情绪。
+任务: 捕猎当前市场主力的动向和筹码集中度。
+
+3. Harness 融合器 (The Arbitrator)
+三位盲人摸象的特工将产生极为结构化的短 JSON 报告（包含 Stance: INT 与 Confidence: 0.0-1.0）。Harness 的最终融合节点（Arbiter）将不再听他们吵架，而是基于他们不可调和的矛盾点做出终裁。
+例如 Arbiter 的逻辑推演会变成：“该股技术面触发死叉（Technical输出空），但价值层因为暴跌进入极度低估区（Fundamental输出多），综合考虑这属于黄金坑，给出建仓信号。”——这才是真正的投研。">
+<meta name="author" content="James Gan">
+<link rel="canonical" href="https://jamesgan.com/qmt/ai_harness_design/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.47e51c7d8489b002361bac156ce9a0a8776d08c5462c2cee95801efafdd90d35.css" integrity="sha256-R&#43;UcfYSJsAI2G6wVbOmgqHdtCMVGLCzulYAe&#43;v3ZDTU=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://jamesgan.com/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://jamesgan.com/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://jamesgan.com/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://jamesgan.com/apple-touch-icon.png">
+<link rel="mask-icon" href="https://jamesgan.com/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://jamesgan.com/qmt/ai_harness_design/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://jamesgan.com/qmt/ai_harness_design/">
+  <meta property="og:site_name" content="James Gan">
+  <meta property="og:title" content="James Gan">
+  <meta property="og:description" content="QMT AI Harness 工程与扩展防线设计 文件性质: 架构决策增补草案 (针对 Blueprint 致命缺陷的修复) 重点目标: 彻底消除大模型在金融交易中的“看图作文”幻觉，并加固周边基建的容错能力。
+专项一：AI Harness 维度隔离工程设计 (解决缺陷3) 为了防止 AI 因为迎合设定的“多空人设”而产生数据幻觉，我们需要在底层设计一套**特征路由与盲区隔离（Harness）**机制。
+1. 核心设计思想：剥夺全知全能的视角 过去我们将包含 OHLC/技术指标/财务面/新闻 的整个巨大 JSON 广播给所有特工。 在全新的 Harness 设计下，系统只通过“守门人 (ContextRouter)”对数据进行脱敏切分后再下发。
+2. 维度特工阵列 (Dimensional Agents) A. 技术派特工 (Technical Agent) 看到的数据: 纯 K 线形态、MA60 均线、MACD/BOLL 极值点、价格相对强度。 被屏蔽的数据: 估值 PE、公司名字、新闻利好。 任务: 纯粹从图形和博弈阻力位出发，哪怕公司马上退市，只要底背离了也必须说看多。 B. 价值派特工 (Fundamental Agent) 看到的数据: 历史 5 年 PE/PB 绝对分位值、ROE 变化、当前行业平均市盈率。 被屏蔽的数据: K 线形态走势、短线暴涨暴跌的惊悚新闻。 任务: 冷血计算护城河与折价率。只要低于 30% 分位即给出买点，哪怕天天跌板。 C. 资金/情绪面特工 (Sentiment Agent) 看到的数据: volume_shadow (量影)、大单净流入、外部飞书资讯情绪。 任务: 捕猎当前市场主力的动向和筹码集中度。 3. Harness 融合器 (The Arbitrator) 三位盲人摸象的特工将产生极为结构化的短 JSON 报告（包含 Stance: INT 与 Confidence: 0.0-1.0）。Harness 的最终融合节点（Arbiter）将不再听他们吵架，而是基于他们不可调和的矛盾点做出终裁。 例如 Arbiter 的逻辑推演会变成：“该股技术面触发死叉（Technical输出空），但价值层因为暴跌进入极度低估区（Fundamental输出多），综合考虑这属于黄金坑，给出建仓信号。”——这才是真正的投研。">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="qmt">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="James Gan">
+  <meta name="twitter:description" content="QMT AI Harness 工程与扩展防线设计 文件性质: 架构决策增补草案 (针对 Blueprint 致命缺陷的修复) 重点目标: 彻底消除大模型在金融交易中的“看图作文”幻觉，并加固周边基建的容错能力。
+专项一：AI Harness 维度隔离工程设计 (解决缺陷3) 为了防止 AI 因为迎合设定的“多空人设”而产生数据幻觉，我们需要在底层设计一套**特征路由与盲区隔离（Harness）**机制。
+1. 核心设计思想：剥夺全知全能的视角 过去我们将包含 OHLC/技术指标/财务面/新闻 的整个巨大 JSON 广播给所有特工。 在全新的 Harness 设计下，系统只通过“守门人 (ContextRouter)”对数据进行脱敏切分后再下发。
+2. 维度特工阵列 (Dimensional Agents) A. 技术派特工 (Technical Agent) 看到的数据: 纯 K 线形态、MA60 均线、MACD/BOLL 极值点、价格相对强度。 被屏蔽的数据: 估值 PE、公司名字、新闻利好。 任务: 纯粹从图形和博弈阻力位出发，哪怕公司马上退市，只要底背离了也必须说看多。 B. 价值派特工 (Fundamental Agent) 看到的数据: 历史 5 年 PE/PB 绝对分位值、ROE 变化、当前行业平均市盈率。 被屏蔽的数据: K 线形态走势、短线暴涨暴跌的惊悚新闻。 任务: 冷血计算护城河与折价率。只要低于 30% 分位即给出买点，哪怕天天跌板。 C. 资金/情绪面特工 (Sentiment Agent) 看到的数据: volume_shadow (量影)、大单净流入、外部飞书资讯情绪。 任务: 捕猎当前市场主力的动向和筹码集中度。 3. Harness 融合器 (The Arbitrator) 三位盲人摸象的特工将产生极为结构化的短 JSON 报告（包含 Stance: INT 与 Confidence: 0.0-1.0）。Harness 的最终融合节点（Arbiter）将不再听他们吵架，而是基于他们不可调和的矛盾点做出终裁。 例如 Arbiter 的逻辑推演会变成：“该股技术面触发死叉（Technical输出空），但价值层因为暴跌进入极度低估区（Fundamental输出多），综合考虑这属于黄金坑，给出建仓信号。”——这才是真正的投研。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Qmts",
+      "item": "https://jamesgan.com/qmt/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "",
+      "item": "https://jamesgan.com/qmt/ai_harness_design/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "",
+  "name": "",
+  "description": "QMT AI Harness 工程与扩展防线设计 文件性质: 架构决策增补草案 (针对 Blueprint 致命缺陷的修复) 重点目标: 彻底消除大模型在金融交易中的“看图作文”幻觉，并加固周边基建的容错能力。\n专项一：AI Harness 维度隔离工程设计 (解决缺陷3) 为了防止 AI 因为迎合设定的“多空人设”而产生数据幻觉，我们需要在底层设计一套**特征路由与盲区隔离（Harness）**机制。\n1. 核心设计思想：剥夺全知全能的视角 过去我们将包含 OHLC/技术指标/财务面/新闻 的整个巨大 JSON 广播给所有特工。 在全新的 Harness 设计下，系统只通过“守门人 (ContextRouter)”对数据进行脱敏切分后再下发。\n2. 维度特工阵列 (Dimensional Agents) A. 技术派特工 (Technical Agent) 看到的数据: 纯 K 线形态、MA60 均线、MACD/BOLL 极值点、价格相对强度。 被屏蔽的数据: 估值 PE、公司名字、新闻利好。 任务: 纯粹从图形和博弈阻力位出发，哪怕公司马上退市，只要底背离了也必须说看多。 B. 价值派特工 (Fundamental Agent) 看到的数据: 历史 5 年 PE/PB 绝对分位值、ROE 变化、当前行业平均市盈率。 被屏蔽的数据: K 线形态走势、短线暴涨暴跌的惊悚新闻。 任务: 冷血计算护城河与折价率。只要低于 30% 分位即给出买点，哪怕天天跌板。 C. 资金/情绪面特工 (Sentiment Agent) 看到的数据: volume_shadow (量影)、大单净流入、外部飞书资讯情绪。 任务: 捕猎当前市场主力的动向和筹码集中度。 3. Harness 融合器 (The Arbitrator) 三位盲人摸象的特工将产生极为结构化的短 JSON 报告（包含 Stance: INT 与 Confidence: 0.0-1.0）。Harness 的最终融合节点（Arbiter）将不再听他们吵架，而是基于他们不可调和的矛盾点做出终裁。 例如 Arbiter 的逻辑推演会变成：“该股技术面触发死叉（Technical输出空），但价值层因为暴跌进入极度低估区（Fundamental输出多），综合考虑这属于黄金坑，给出建仓信号。”——这才是真正的投研。\n",
+  "keywords": [
+    
+  ],
+  "articleBody": "QMT AI Harness 工程与扩展防线设计 文件性质: 架构决策增补草案 (针对 Blueprint 致命缺陷的修复) 重点目标: 彻底消除大模型在金融交易中的“看图作文”幻觉，并加固周边基建的容错能力。\n专项一：AI Harness 维度隔离工程设计 (解决缺陷3) 为了防止 AI 因为迎合设定的“多空人设”而产生数据幻觉，我们需要在底层设计一套**特征路由与盲区隔离（Harness）**机制。\n1. 核心设计思想：剥夺全知全能的视角 过去我们将包含 OHLC/技术指标/财务面/新闻 的整个巨大 JSON 广播给所有特工。 在全新的 Harness 设计下，系统只通过“守门人 (ContextRouter)”对数据进行脱敏切分后再下发。\n2. 维度特工阵列 (Dimensional Agents) A. 技术派特工 (Technical Agent) 看到的数据: 纯 K 线形态、MA60 均线、MACD/BOLL 极值点、价格相对强度。 被屏蔽的数据: 估值 PE、公司名字、新闻利好。 任务: 纯粹从图形和博弈阻力位出发，哪怕公司马上退市，只要底背离了也必须说看多。 B. 价值派特工 (Fundamental Agent) 看到的数据: 历史 5 年 PE/PB 绝对分位值、ROE 变化、当前行业平均市盈率。 被屏蔽的数据: K 线形态走势、短线暴涨暴跌的惊悚新闻。 任务: 冷血计算护城河与折价率。只要低于 30% 分位即给出买点，哪怕天天跌板。 C. 资金/情绪面特工 (Sentiment Agent) 看到的数据: volume_shadow (量影)、大单净流入、外部飞书资讯情绪。 任务: 捕猎当前市场主力的动向和筹码集中度。 3. Harness 融合器 (The Arbitrator) 三位盲人摸象的特工将产生极为结构化的短 JSON 报告（包含 Stance: INT 与 Confidence: 0.0-1.0）。Harness 的最终融合节点（Arbiter）将不再听他们吵架，而是基于他们不可调和的矛盾点做出终裁。 例如 Arbiter 的逻辑推演会变成：“该股技术面触发死叉（Technical输出空），但价值层因为暴跌进入极度低估区（Fundamental输出多），综合考虑这属于黄金坑，给出建仓信号。”——这才是真正的投研。\n专项二：必须重视与处理的“隐藏地雷” (Other Critical Aspects) 在量化工程大一统的过程中，除了 AI Harness，还有三个决定能否平稳活过第一个交易日的生死防线：\n1. 数据保鲜剂检查 (Staleness Detection Engine) 一旦我们把数据系统和运算系统解耦成了 Data Daemon，最可怕的事情就是**“脏读假死”**。 如果底层的异步抓取程序因为断网死锁了，但主程不知道，它会拿着 5 分钟前的一根死 K线疯狂循环判断并买入。\n处理方案: 所有经过 EventBus 流转的 OHLCData 和 Context 必须带有时效印记 timestamp。必须在 StrategyBase.on_bar() 的第一行加入硬编码：if (now - data.timestamp) \u003e 500ms: return。哪怕错失交易，也不能对着僵尸数据开枪。 2. LLM 熔断与物理降级机制 (Graceful Degradation) 不管用 DeepSeek 还是 Claude，大模型的 API 在极端行情下（由于用的人多）经常 502 拒载或超时 120 秒。\n处理方案: 系统管线必须包含一个 Bypass Mode（旁路模式）。当监测到 LLM 返回耗时超过 5 秒 或连续 2 次报错，立刻在飞行状态中开启熔断。所有选股与调仓完全降维并移交给纯数学的 V7.1 Titan 引擎自动执行防守，直到 AI 重新上线连接恢复。不能让断网导致仓位裸奔。 3. 指令幂等性与防重打薄 (Idempotency Control) 因为系统非常复杂（跨过了 ATMS -\u003e QMT -\u003e 异步发单），如果网络由于某种抖动，让大模型的某个 JSON 因为重传被执行了两次，会导致双倍满仓某只股票。\n处理方案: 在最后的订单网关建立极度严苛的 Order Hash Registry。对标的、时间戳和意图做 Hash 化。1 小时内相同方向、相似评分的指令即使再次传来，网关层面也强制吃掉不予执行。 ",
+  "wordCount" : "179",
+  "inLanguage": "en",
+  "datePublished": "0001-01-01T00:00:00Z",
+  "dateModified": "0001-01-01T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "James Gan"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://jamesgan.com/qmt/ai_harness_design/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "James Gan",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://jamesgan.com/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://jamesgan.com/" accesskey="h" title="James Gan (Alt + H)">James Gan</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="https://jamesgan.com/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://jamesgan.com/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://jamesgan.com/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://jamesgan.com/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      
+    </h1>
+    <div class="post-meta"><span>James Gan</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="qmt-ai-harness-工程与扩展防线设计">QMT AI Harness 工程与扩展防线设计<a hidden class="anchor" aria-hidden="true" href="#qmt-ai-harness-工程与扩展防线设计">#</a></h1>
+<blockquote>
+<p><strong>文件性质</strong>: 架构决策增补草案 (针对 Blueprint 致命缺陷的修复)
+<strong>重点目标</strong>: 彻底消除大模型在金融交易中的“看图作文”幻觉，并加固周边基建的容错能力。</p>
+</blockquote>
+<hr>
+<h2 id="专项一ai-harness-维度隔离工程设计-解决缺陷3">专项一：AI Harness 维度隔离工程设计 (解决缺陷3)<a hidden class="anchor" aria-hidden="true" href="#专项一ai-harness-维度隔离工程设计-解决缺陷3">#</a></h2>
+<p>为了防止 AI 因为迎合设定的“多空人设”而产生数据幻觉，我们需要在底层设计一套**特征路由与盲区隔离（Harness）**机制。</p>
+<h3 id="1-核心设计思想剥夺全知全能的视角">1. 核心设计思想：剥夺全知全能的视角<a hidden class="anchor" aria-hidden="true" href="#1-核心设计思想剥夺全知全能的视角">#</a></h3>
+<p>过去我们将包含 <code>OHLC/技术指标/财务面/新闻</code> 的整个巨大 JSON 广播给所有特工。
+在全新的 Harness 设计下，<strong>系统只通过“守门人 (ContextRouter)”对数据进行脱敏切分后再下发。</strong></p>
+<h3 id="2-维度特工阵列-dimensional-agents">2. 维度特工阵列 (Dimensional Agents)<a hidden class="anchor" aria-hidden="true" href="#2-维度特工阵列-dimensional-agents">#</a></h3>
+<h4 id="a-技术派特工-technical-agent">A. 技术派特工 (Technical Agent)<a hidden class="anchor" aria-hidden="true" href="#a-技术派特工-technical-agent">#</a></h4>
+<ul>
+<li><strong>看到的数据</strong>: 纯 K 线形态、MA60 均线、MACD/BOLL 极值点、价格相对强度。</li>
+<li><strong>被屏蔽的数据</strong>: 估值 PE、公司名字、新闻利好。</li>
+<li><strong>任务</strong>: 纯粹从图形和博弈阻力位出发，哪怕公司马上退市，只要底背离了也必须说看多。</li>
+</ul>
+<h4 id="b-价值派特工-fundamental-agent">B. 价值派特工 (Fundamental Agent)<a hidden class="anchor" aria-hidden="true" href="#b-价值派特工-fundamental-agent">#</a></h4>
+<ul>
+<li><strong>看到的数据</strong>: 历史 5 年 PE/PB 绝对分位值、ROE 变化、当前行业平均市盈率。</li>
+<li><strong>被屏蔽的数据</strong>: K 线形态走势、短线暴涨暴跌的惊悚新闻。</li>
+<li><strong>任务</strong>: 冷血计算护城河与折价率。只要低于 30% 分位即给出买点，哪怕天天跌板。</li>
+</ul>
+<h4 id="c-资金情绪面特工-sentiment-agent">C. 资金/情绪面特工 (Sentiment Agent)<a hidden class="anchor" aria-hidden="true" href="#c-资金情绪面特工-sentiment-agent">#</a></h4>
+<ul>
+<li><strong>看到的数据</strong>: <code>volume_shadow</code> (量影)、大单净流入、外部飞书资讯情绪。</li>
+<li><strong>任务</strong>: 捕猎当前市场主力的动向和筹码集中度。</li>
+</ul>
+<h3 id="3-harness-融合器-the-arbitrator">3. Harness 融合器 (The Arbitrator)<a hidden class="anchor" aria-hidden="true" href="#3-harness-融合器-the-arbitrator">#</a></h3>
+<p>三位盲人摸象的特工将产生极为结构化的短 JSON 报告（包含 <code>Stance: INT</code> 与 <code>Confidence: 0.0-1.0</code>）。Harness 的最终融合节点（Arbiter）将不再听他们吵架，而是基于他们不可调和的矛盾点做出终裁。
+<em>例如 Arbiter 的逻辑推演会变成：“该股技术面触发死叉（Technical输出空），但价值层因为暴跌进入极度低估区（Fundamental输出多），综合考虑这属于黄金坑，给出建仓信号。”</em>——这才是真正的投研。</p>
+<hr>
+<h2 id="专项二必须重视与处理的隐藏地雷-other-critical-aspects">专项二：必须重视与处理的“隐藏地雷” (Other Critical Aspects)<a hidden class="anchor" aria-hidden="true" href="#专项二必须重视与处理的隐藏地雷-other-critical-aspects">#</a></h2>
+<p>在量化工程大一统的过程中，除了 AI Harness，还有三个决定能否平稳活过第一个交易日的生死防线：</p>
+<h3 id="1-数据保鲜剂检查-staleness-detection-engine">1. 数据保鲜剂检查 (Staleness Detection Engine)<a hidden class="anchor" aria-hidden="true" href="#1-数据保鲜剂检查-staleness-detection-engine">#</a></h3>
+<p>一旦我们把数据系统和运算系统解耦成了 <code>Data Daemon</code>，最可怕的事情就是**“脏读假死”**。
+如果底层的异步抓取程序因为断网死锁了，但主程不知道，它会拿着 5 分钟前的一根死 K线疯狂循环判断并买入。</p>
+<ul>
+<li><strong>处理方案</strong>: 所有经过 <code>EventBus</code> 流转的 <code>OHLCData</code> 和 <code>Context</code> 必须带有时效印记 <code>timestamp</code>。必须在 <code>StrategyBase.on_bar()</code> 的第一行加入硬编码：<code>if (now - data.timestamp) &gt; 500ms: return</code>。哪怕错失交易，也不能对着僵尸数据开枪。</li>
+</ul>
+<h3 id="2-llm-熔断与物理降级机制-graceful-degradation">2. LLM 熔断与物理降级机制 (Graceful Degradation)<a hidden class="anchor" aria-hidden="true" href="#2-llm-熔断与物理降级机制-graceful-degradation">#</a></h3>
+<p>不管用 DeepSeek 还是 Claude，大模型的 API 在极端行情下（由于用的人多）经常 502 拒载或超时 120 秒。</p>
+<ul>
+<li><strong>处理方案</strong>: 系统管线必须包含一个 <code>Bypass Mode</code>（旁路模式）。当监测到 LLM 返回耗时超过 5 秒 或连续 2 次报错，立刻在飞行状态中开启<strong>熔断</strong>。所有选股与调仓完全降维并移交给纯数学的 <code>V7.1 Titan</code> 引擎自动执行防守，直到 AI 重新上线连接恢复。不能让断网导致仓位裸奔。</li>
+</ul>
+<h3 id="3-指令幂等性与防重打薄-idempotency-control">3. 指令幂等性与防重打薄 (Idempotency Control)<a hidden class="anchor" aria-hidden="true" href="#3-指令幂等性与防重打薄-idempotency-control">#</a></h3>
+<p>因为系统非常复杂（跨过了 ATMS -&gt; QMT -&gt; 异步发单），如果网络由于某种抖动，让大模型的某个 JSON 因为重传被执行了两次，会导致双倍满仓某只股票。</p>
+<ul>
+<li><strong>处理方案</strong>: 在最后的订单网关建立极度严苛的 <code>Order Hash Registry</code>。对标的、时间戳和意图做 Hash 化。1 小时内相同方向、相似评分的指令即使再次传来，网关层面也强制吃掉不予执行。</li>
+</ul>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://jamesgan.com/">James Gan</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>
