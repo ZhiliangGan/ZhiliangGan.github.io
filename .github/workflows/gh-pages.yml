@@ -80,4 +80,5 @@ jobs:
           git remote add gitee "https://james19:${GITEE_TOKEN}@gitee.com/james19/james.git"
           git add -A
           git commit -m "Sync from GitHub Pages"
-          git push -f gitee main
+          git branch -M master
+          git push -f gitee master
