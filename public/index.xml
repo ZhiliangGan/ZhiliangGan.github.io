@@ -2,17 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>James Gan</title>
-    <link>https://jamesgan.com/</link>
+    <link>https://www.ganyiming.top/</link>
     <description>Recent content on James Gan</description>
     <generator>Hugo</generator>
     <language>en-us</language>
     <lastBuildDate>Wed, 15 Apr 2026 00:00:00 +0000</lastBuildDate>
-    <atom:link href="https://jamesgan.com/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://www.ganyiming.top/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>About</title>
-      <link>https://jamesgan.com/about/</link>
+      <link>https://www.ganyiming.top/about/</link>
       <pubDate>Wed, 15 Apr 2026 00:00:00 +0000</pubDate>
-      <guid>https://jamesgan.com/about/</guid>
+      <guid>https://www.ganyiming.top/about/</guid>
       <description>&lt;h1 id=&#34;about-me&#34;&gt;About Me&lt;/h1&gt;
 &lt;p&gt;Hi, I&amp;rsquo;m James. I&amp;rsquo;m a software engineer passionate about building great products and sharing knowledge with the community.&lt;/p&gt;
 &lt;h2 id=&#34;skills&#34;&gt;Skills&lt;/h2&gt;
@@ -26,17 +26,17 @@
     </item>
     <item>
       <title>Hello World</title>
-      <link>https://jamesgan.com/posts/hello-world/</link>
+      <link>https://www.ganyiming.top/posts/hello-world/</link>
       <pubDate>Wed, 15 Apr 2026 00:00:00 +0000</pubDate>
-      <guid>https://jamesgan.com/posts/hello-world/</guid>
+      <guid>https://www.ganyiming.top/posts/hello-world/</guid>
       <description>&lt;p&gt;Welcome to my blog! This is my first post using Hugo and PaperMod theme.&lt;/p&gt;
 &lt;p&gt;Stay tuned for more content coming soon.&lt;/p&gt;</description>
     </item>
     <item>
       <title></title>
-      <link>https://jamesgan.com/qmt/ai_harness_design/</link>
+      <link>https://www.ganyiming.top/qmt/ai_harness_design/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://jamesgan.com/qmt/ai_harness_design/</guid>
+      <guid>https://www.ganyiming.top/qmt/ai_harness_design/</guid>
       <description>&lt;h1 id=&#34;qmt-ai-harness-工程与扩展防线设计&#34;&gt;QMT AI Harness 工程与扩展防线设计&lt;/h1&gt;
 &lt;blockquote&gt;
 &lt;p&gt;&lt;strong&gt;文件性质&lt;/strong&gt;: 架构决策增补草案 (针对 Blueprint 致命缺陷的修复)
@@ -72,9 +72,9 @@
     </item>
     <item>
       <title></title>
-      <link>https://jamesgan.com/qmt/architecture_assessment_and_unification_plan/</link>
+      <link>https://www.ganyiming.top/qmt/architecture_assessment_and_unification_plan/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://jamesgan.com/qmt/architecture_assessment_and_unification_plan/</guid>
+      <guid>https://www.ganyiming.top/qmt/architecture_assessment_and_unification_plan/</guid>
       <description>&lt;h1 id=&#34;量化交易系统总体架构与一统演进蓝图-assessment--unification-plan&#34;&gt;量化交易系统总体架构与一统演进蓝图 (Assessment &amp;amp; Unification Plan)&lt;/h1&gt;
 &lt;blockquote&gt;
 &lt;p&gt;&lt;strong&gt;文档创建&lt;/strong&gt;: 2026-04-05
@@ -111,9 +111,9 @@
     </item>
     <item>
       <title></title>
-      <link>https://jamesgan.com/qmt/architecture_high_level_diagram/</link>
+      <link>https://www.ganyiming.top/qmt/architecture_high_level_diagram/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://jamesgan.com/qmt/architecture_high_level_diagram/</guid>
+      <guid>https://www.ganyiming.top/qmt/architecture_high_level_diagram/</guid>
       <description>&lt;h1 id=&#34;qmt-高阶架构图&#34;&gt;QMT 高阶架构图&lt;/h1&gt;
 &lt;p&gt;下图为 QMT 项目的高阶架构视图（Mermaid）：&lt;/p&gt;
 &lt;pre tabindex=&#34;0&#34;&gt;&lt;code class=&#34;language-mermaid&#34; data-lang=&#34;mermaid&#34;&gt;%%{init: {&amp;#34;theme&amp;#34;:&amp;#34;neutral&amp;#34;}}%%
@@ -199,9 +199,9 @@ flowchart LR
     </item>
     <item>
       <title></title>
-      <link>https://jamesgan.com/qmt/qmt_code_architecture_20260406/</link>
+      <link>https://www.ganyiming.top/qmt/qmt_code_architecture_20260406/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://jamesgan.com/qmt/qmt_code_architecture_20260406/</guid>
+      <guid>https://www.ganyiming.top/qmt/qmt_code_architecture_20260406/</guid>
       <description>&lt;h1 id=&#34;qmt-系统代码架构分析&#34;&gt;QMT 系统代码架构分析&lt;/h1&gt;
 &lt;blockquote&gt;
 &lt;p&gt;日期: 2026-04-06
@@ -254,9 +254,9 @@ flowchart LR
     </item>
     <item>
       <title></title>
-      <link>https://jamesgan.com/qmt/qmt_detailed_runtime_flow_20260407/</link>
+      <link>https://www.ganyiming.top/qmt/qmt_detailed_runtime_flow_20260407/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://jamesgan.com/qmt/qmt_detailed_runtime_flow_20260407/</guid>
+      <guid>https://www.ganyiming.top/qmt/qmt_detailed_runtime_flow_20260407/</guid>
       <description>&lt;h1 id=&#34;qmt-detailed-runtime-flow&#34;&gt;QMT Detailed Runtime Flow&lt;/h1&gt;
 &lt;blockquote&gt;
 &lt;p&gt;时间: 2026-04-07
@@ -364,9 +364,9 @@ flowchart LR
     </item>
     <item>
       <title></title>
-      <link>https://jamesgan.com/qmt/qmt_executive_brief_20260407/</link>
+      <link>https://www.ganyiming.top/qmt/qmt_executive_brief_20260407/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://jamesgan.com/qmt/qmt_executive_brief_20260407/</guid>
+      <guid>https://www.ganyiming.top/qmt/qmt_executive_brief_20260407/</guid>
       <description>&lt;h1 id=&#34;qmt-系统管理层摘要&#34;&gt;QMT 系统管理层摘要&lt;/h1&gt;
 &lt;blockquote&gt;
 &lt;p&gt;日期: 2026-04-07
@@ -404,9 +404,9 @@ flowchart LR
     </item>
     <item>
       <title></title>
-      <link>https://jamesgan.com/qmt/qmt_high_level_architecture_20260406/</link>
+      <link>https://www.ganyiming.top/qmt/qmt_high_level_architecture_20260406/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://jamesgan.com/qmt/qmt_high_level_architecture_20260406/</guid>
+      <guid>https://www.ganyiming.top/qmt/qmt_high_level_architecture_20260406/</guid>
       <description>&lt;h1 id=&#34;qmt-高层架构图&#34;&gt;QMT 高层架构图&lt;/h1&gt;
 &lt;blockquote&gt;
 &lt;p&gt;日期: 2026-04-06
@@ -584,9 +584,9 @@ flowchart LR
     </item>
     <item>
       <title></title>
-      <link>https://jamesgan.com/qmt/qts_rename_migration_plan_20260407/</link>
+      <link>https://www.ganyiming.top/qmt/qts_rename_migration_plan_20260407/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://jamesgan.com/qmt/qts_rename_migration_plan_20260407/</guid>
+      <guid>https://www.ganyiming.top/qmt/qts_rename_migration_plan_20260407/</guid>
       <description>&lt;h1 id=&#34;qss-到-qts-重命名迁移方案&#34;&gt;QSS 到 QTS 重命名迁移方案&lt;/h1&gt;
 &lt;blockquote&gt;
 &lt;p&gt;日期: 2026-04-07
@@ -635,9 +635,9 @@ flowchart LR
     </item>
     <item>
       <title></title>
-      <link>https://jamesgan.com/qmt/riskforarcitecture/</link>
+      <link>https://www.ganyiming.top/qmt/riskforarcitecture/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://jamesgan.com/qmt/riskforarcitecture/</guid>
+      <guid>https://www.ganyiming.top/qmt/riskforarcitecture/</guid>
       <description>&lt;h1 id=&#34;qmt-architecture-risk-details&#34;&gt;QMT Architecture Risk Details&lt;/h1&gt;
 &lt;blockquote&gt;
 &lt;p&gt;基于当前代码仓库现状整理，聚焦此前架构文档里提到的前三类风险。
@@ -693,12 +693,12 @@ flowchart LR
 &lt;/ol&gt;
 &lt;h3 id=&#34;13-代码与文档证据&#34;&gt;1.3 代码与文档证据&lt;/h3&gt;
 &lt;ul&gt;
-&lt;li&gt;&lt;a href=&#34;https://jamesgan.com/Users/james/code/qmt/qmt/ARCHITECTURE.md:13&#34;&gt;ARCHITECTURE.md&lt;/a&gt; 仍写 &lt;code&gt;qmt_system / wavemonitor / stock-qdata / search_essential / quant_config&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;https://jamesgan.com/Users/james/code/qmt/qmt/ARCHITECTURE.md:96&#34;&gt;ARCHITECTURE.md&lt;/a&gt; 之后的大段目录树仍基于旧结构&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;https://jamesgan.com/Users/james/code/qmt/qmt/qss/docs/Architecture.md:11&#34;&gt;Architecture.md&lt;/a&gt; 仍以 &lt;code&gt;qmt_system / search_essential / wavemonitor / stock-qdata&lt;/code&gt; 为主名&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;https://jamesgan.com/Users/james/code/qmt/qmt/tss/Architecture.md:13&#34;&gt;Architecture.md&lt;/a&gt; 仍把 &lt;code&gt;search_essential / wavemonitor / qmt_system&lt;/code&gt; 当作主要模块名&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;https://jamesgan.com/Users/james/code/qmt/qmt/docs/ARCHITECTURE_HIGH_LEVEL_DIAGRAM.md:17&#34;&gt;ARCHITECTURE_HIGH_LEVEL_DIAGRAM.md&lt;/a&gt; 图中仍使用 &lt;code&gt;stock-qdata / wavemonitor / quant_config&lt;/code&gt;&lt;/li&gt;
-&lt;li&gt;&lt;a href=&#34;https://jamesgan.com/Users/james/code/qmt/qmt/docs/integration-blueprint.md:42&#34;&gt;integration-blueprint.md&lt;/a&gt; 已开始建立 &lt;code&gt;旧目录 -&amp;gt; 新简称&lt;/code&gt; 映射，但这份映射尚未完全反向同步到其他文档&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.ganyiming.top/Users/james/code/qmt/qmt/ARCHITECTURE.md:13&#34;&gt;ARCHITECTURE.md&lt;/a&gt; 仍写 &lt;code&gt;qmt_system / wavemonitor / stock-qdata / search_essential / quant_config&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.ganyiming.top/Users/james/code/qmt/qmt/ARCHITECTURE.md:96&#34;&gt;ARCHITECTURE.md&lt;/a&gt; 之后的大段目录树仍基于旧结构&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.ganyiming.top/Users/james/code/qmt/qmt/qss/docs/Architecture.md:11&#34;&gt;Architecture.md&lt;/a&gt; 仍以 &lt;code&gt;qmt_system / search_essential / wavemonitor / stock-qdata&lt;/code&gt; 为主名&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.ganyiming.top/Users/james/code/qmt/qmt/tss/Architecture.md:13&#34;&gt;Architecture.md&lt;/a&gt; 仍把 &lt;code&gt;search_essential / wavemonitor / qmt_system&lt;/code&gt; 当作主要模块名&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.ganyiming.top/Users/james/code/qmt/qmt/docs/ARCHITECTURE_HIGH_LEVEL_DIAGRAM.md:17&#34;&gt;ARCHITECTURE_HIGH_LEVEL_DIAGRAM.md&lt;/a&gt; 图中仍使用 &lt;code&gt;stock-qdata / wavemonitor / quant_config&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&#34;https://www.ganyiming.top/Users/james/code/qmt/qmt/docs/integration-blueprint.md:42&#34;&gt;integration-blueprint.md&lt;/a&gt; 已开始建立 &lt;code&gt;旧目录 -&amp;gt; 新简称&lt;/code&gt; 映射，但这份映射尚未完全反向同步到其他文档&lt;/li&gt;
 &lt;/ul&gt;
 &lt;h3 id=&#34;14-架构层影响&#34;&gt;1.4 架构层影响&lt;/h3&gt;
 &lt;ul&gt;
@@ -709,7 +709,7 @@ flowchart LR
 &lt;/ul&gt;
 &lt;h3 id=&#34;15-建议&#34;&gt;1.5 建议&lt;/h3&gt;
 &lt;ol&gt;
-&lt;li&gt;指定一份主口径文档，推荐继续以 &lt;a href=&#34;https://jamesgan.com/Users/james/code/qmt/qmt/docs/architecture/QMT_CODE_ARCHITECTURE_20260406.md&#34;&gt;QMT_CODE_ARCHITECTURE_20260406.md&lt;/a&gt; 作为对外事实来源&lt;/li&gt;
+&lt;li&gt;指定一份主口径文档，推荐继续以 &lt;a href=&#34;https://www.ganyiming.top/Users/james/code/qmt/qmt/docs/architecture/QMT_CODE_ARCHITECTURE_20260406.md&#34;&gt;QMT_CODE_ARCHITECTURE_20260406.md&lt;/a&gt; 作为对外事实来源&lt;/li&gt;
 &lt;li&gt;在旧文档顶部统一加“历史文档 / 已迁移命名对照”提示，而不是默默保留旧名&lt;/li&gt;
 &lt;li&gt;对外统一使用 &lt;code&gt;QTS / SPS / TSS / ITS / qdata&lt;/code&gt;&lt;/li&gt;
 &lt;li&gt;对内在过渡期保留说明: &lt;code&gt;QTS&lt;/code&gt; 对应当前代码目录 &lt;code&gt;qss/&lt;/code&gt;&lt;/li&gt;
@@ -720,9 +720,9 @@ flowchart LR
     </item>
     <item>
       <title></title>
-      <link>https://jamesgan.com/qmt/saf_architecture_review/</link>
+      <link>https://www.ganyiming.top/qmt/saf_architecture_review/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://jamesgan.com/qmt/saf_architecture_review/</guid>
+      <guid>https://www.ganyiming.top/qmt/saf_architecture_review/</guid>
       <description>&lt;h1 id=&#34;saf-architecture-review&#34;&gt;SAF Architecture Review&lt;/h1&gt;
 &lt;blockquote&gt;
 &lt;p&gt;策略自动化工厂 — 架构深度评审（修订版）
@@ -792,9 +792,9 @@ flowchart LR
     </item>
     <item>
       <title></title>
-      <link>https://jamesgan.com/qmt/saf_migration_plan_20260413/</link>
+      <link>https://www.ganyiming.top/qmt/saf_migration_plan_20260413/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
-      <guid>https://jamesgan.com/qmt/saf_migration_plan_20260413/</guid>
+      <guid>https://www.ganyiming.top/qmt/saf_migration_plan_20260413/</guid>
       <description>&lt;h1 id=&#34;saf-重构迁移方案&#34;&gt;SAF 重构迁移方案&lt;/h1&gt;
 &lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-04-13
 &lt;strong&gt;目标&lt;/strong&gt;: 将 SAF 提升到与 StrategeFactoryFlow/TSS 并列层次，废弃两者中与 SAF 重叠的部分

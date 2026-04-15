@@ -2,17 +2,17 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">
   <channel>
     <title>Posts on James Gan</title>
-    <link>https://jamesgan.com/posts/</link>
+    <link>https://www.ganyiming.top/posts/</link>
     <description>Recent content in Posts on James Gan</description>
     <generator>Hugo</generator>
     <language>en-us</language>
     <lastBuildDate>Wed, 15 Apr 2026 00:00:00 +0000</lastBuildDate>
-    <atom:link href="https://jamesgan.com/posts/index.xml" rel="self" type="application/rss+xml" />
+    <atom:link href="https://www.ganyiming.top/posts/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Hello World</title>
-      <link>https://jamesgan.com/posts/hello-world/</link>
+      <link>https://www.ganyiming.top/posts/hello-world/</link>
       <pubDate>Wed, 15 Apr 2026 00:00:00 +0000</pubDate>
-      <guid>https://jamesgan.com/posts/hello-world/</guid>
+      <guid>https://www.ganyiming.top/posts/hello-world/</guid>
       <description>&lt;p&gt;Welcome to my blog! This is my first post using Hugo and PaperMod theme.&lt;/p&gt;
 &lt;p&gt;Stay tuned for more content coming soon.&lt;/p&gt;</description>
     </item>
