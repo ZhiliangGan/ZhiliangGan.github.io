@@ -9,6 +9,533 @@
     <atom:link href="https://www.ganyiming.top/qmt/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title></title>
+      <link>https://www.ganyiming.top/qmt/2026-04-05-monorepo-unification-plan/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://www.ganyiming.top/qmt/2026-04-05-monorepo-unification-plan/</guid>
+      <description>&lt;h1 id=&#34;devlog-008-qmt-monorepo-统一演进蓝图--四段式架构合体&#34;&gt;DevLog #008: QMT Monorepo 统一演进蓝图 — 四段式架构合体&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-04-05
+&lt;strong&gt;状态&lt;/strong&gt;: 规划中
+&lt;strong&gt;Tags&lt;/strong&gt;: architecture, monorepo, system-unification&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;背景&#34;&gt;背景&lt;/h2&gt;
+&lt;p&gt;涉及核心项目：ATMS、QMT (qmt_system)、Wavemonitor、tradingagents-cn&lt;/p&gt;
+&lt;p&gt;核心战略：依托小步快跑迭代，正式开启多项目 &lt;strong&gt;Monorepo 合体进程&lt;/strong&gt;&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;原产物核心定位&#34;&gt;原产物核心定位&lt;/h2&gt;
+&lt;h3 id=&#34;atms-战术监控与ai宏观决策&#34;&gt;ATMS: 战术监控与AI宏观决策&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;历史定位&lt;/strong&gt;: 定时巡检、多维共振监控、结合大语言模型盘中辅助决策的独立系统。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;技术沉淀&lt;/strong&gt;:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;高频巡检调度&lt;/strong&gt;: &lt;code&gt;main.py&lt;/code&gt; 定时机制与健壮的自我降级防护&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;AI 赋能辩论 (&lt;code&gt;debate/&lt;/code&gt;)&lt;/strong&gt;: 利用实时技术信号与持仓成本数据灌入 Prompt、限定 2 轮带记忆裁决的无幻觉 LLM Agent 应用机制&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;消息枢纽&lt;/strong&gt;: 基于 OpenClaw 的飞书自动化卡片推送链路&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;wavemonitor-极速算子基座&#34;&gt;WaveMonitor: 极速算子基座&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;历史定位&lt;/strong&gt;: 探索大批量实时股票状态机计算的最优解。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;技术沉淀&lt;/strong&gt;:&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;&lt;code&gt;vector_engine.py&lt;/code&gt; (V7.1 Titan)&lt;/strong&gt;: 抛弃逐条 K 线的 if-else 判断，完全依靠 Pandas 执行纯向量化并行运算&lt;/li&gt;
+&lt;li&gt;内置双确认红绿波、状态粘性 FFill、超级防守趋势与动态吊灯止损&lt;/li&gt;
+&lt;li&gt;是所有旧版运算库（如 TA-Lib）的&lt;strong&gt;绝对上位替代&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;h3 id=&#34;qmt-system-交易执行与底层基建&#34;&gt;QMT System: 交易执行与底层基建&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;历史定位&lt;/strong&gt;: 打通真实市场交易与跨平台研发（Mac vs Windows）隔离的底座环境。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>https://www.ganyiming.top/qmt/2026-04-06-antigravity-review/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://www.ganyiming.top/qmt/2026-04-06-antigravity-review/</guid>
+      <description>&lt;h1 id=&#34;devlog-010-antigravity-文档评审--phase-3-完成确认--phase-4-改进建议&#34;&gt;DevLog #010: Antigravity 文档评审 — Phase 3 完成确认 + Phase 4 改进建议&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-04-06
+&lt;strong&gt;状态&lt;/strong&gt;: 评审完成
+&lt;strong&gt;Tags&lt;/strong&gt;: phase3, phase4, its, debate-engine, architecture-review&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;phase-3-qss-实盘策略--全部已完成-&#34;&gt;Phase 3: QSS 实盘策略 — 全部已完成 ✅&lt;/h2&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;文档任务&lt;/th&gt;
+          &lt;th&gt;实际状态&lt;/th&gt;
+          &lt;th&gt;Commit&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;实现 Titan Resonance Strategy&lt;/td&gt;
+          &lt;td&gt;&lt;code&gt;qss/strategy/resonance_strategy.py&lt;/code&gt; 222行，三维共振（价值30+趋势40+择时30 - 波动率惩罚）&lt;/td&gt;
+          &lt;td&gt;&lt;code&gt;0865571&lt;/code&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;策略防护状态机扩容&lt;/td&gt;
+          &lt;td&gt;&lt;code&gt;qss/core/signal.py&lt;/code&gt; 已有 &lt;code&gt;stop_loss_price&lt;/code&gt; + &lt;code&gt;metadata&lt;/code&gt; 字段&lt;/td&gt;
+          &lt;td&gt;&lt;code&gt;0865571&lt;/code&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;Chandelier Exit 吊灯止损&lt;/td&gt;
+          &lt;td&gt;&lt;code&gt;qss/risk/stop_loss.py&lt;/code&gt; 143行，ATR 动态乘数 + 超级趋势检测 + 硬止损 max(吊灯线, 成本*0.92)&lt;/td&gt;
+          &lt;td&gt;&lt;code&gt;0865571&lt;/code&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;测试覆盖&lt;/td&gt;
+          &lt;td&gt;&lt;code&gt;tests/test_phase3_strategies.py&lt;/code&gt; 429行，22个测试&lt;/td&gt;
+          &lt;td&gt;&lt;code&gt;0865571&lt;/code&gt;&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;&lt;strong&gt;结论&lt;/strong&gt;: Phase 3 已在 commit &lt;code&gt;0865571&lt;/code&gt; 中全部完成。文档应标记为 DONE。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>https://www.ganyiming.top/qmt/2026-04-06-debate-memory-system-design/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://www.ganyiming.top/qmt/2026-04-06-debate-memory-system-design/</guid>
+      <description>&lt;h1 id=&#34;devlog-006-辩论引擎记忆系统设计--sqlite--fts5-三阶段演进&#34;&gt;DevLog #006: 辩论引擎记忆系统设计 — SQLite + FTS5 三阶段演进&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-04-06
+&lt;strong&gt;状态&lt;/strong&gt;: 实施中
+&lt;strong&gt;Tags&lt;/strong&gt;: its, debate-engine, memory-system, sqlite, fts5&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;现状分析&#34;&gt;现状分析&lt;/h2&gt;
+&lt;h3 id=&#34;当前记忆机制的缺陷&#34;&gt;当前记忆机制的缺陷&lt;/h3&gt;
+&lt;p&gt;辩论引擎 (&lt;code&gt;its/debate/engine.py&lt;/code&gt;) 的&amp;quot;记忆&amp;quot;仅是&lt;strong&gt;进程内的 round-to-round dict&lt;/strong&gt;:&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;previous_round &lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt; {
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;bull&amp;#34;&lt;/span&gt;: bull_output,   &lt;span style=&#34;color:#75715e&#34;&gt;# 本轮多头输出&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;bear&amp;#34;&lt;/span&gt;: bear_output,   &lt;span style=&#34;color:#75715e&#34;&gt;# 本轮空头输出&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#e6db74&#34;&gt;&amp;#34;arbiter&amp;#34;&lt;/span&gt;: arbiter_output,  &lt;span style=&#34;color:#75715e&#34;&gt;# 本轮裁判输出&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;}
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;&lt;strong&gt;三大问题&lt;/strong&gt;：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;进程重启后记忆消失&lt;/li&gt;
+&lt;li&gt;同一股票不同时间辩论，无法参考历史判断&lt;/li&gt;
+&lt;li&gt;没有事后复盘（辩论决策 vs 实际走势）&lt;/li&gt;
+&lt;/ol&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;业界方案对比&#34;&gt;业界方案对比&lt;/h2&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;方案&lt;/th&gt;
+          &lt;th&gt;来源&lt;/th&gt;
+          &lt;th&gt;存储&lt;/th&gt;
+          &lt;th&gt;检索方式&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;ChromaDB 向量记忆&lt;/td&gt;
+          &lt;td&gt;TradingAgents-CN&lt;/td&gt;
+          &lt;td&gt;ChromaDB&lt;/td&gt;
+          &lt;td&gt;Embedding 相似度&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;QMD 混合搜索&lt;/td&gt;
+          &lt;td&gt;OpenClaw/Tobi Lütke&lt;/td&gt;
+          &lt;td&gt;SQLite + FTS5 + sqlite-vec&lt;/td&gt;
+          &lt;td&gt;BM25 + 向量 + LLM 重排&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;strong&gt;本方案&lt;/strong&gt;&lt;/td&gt;
+          &lt;td&gt;QMT&lt;/td&gt;
+          &lt;td&gt;SQLite + FTS5&lt;/td&gt;
+          &lt;td&gt;BM25 全文搜索（可升级向量）&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;h3 id=&#34;为什么不直接用-qmd--chromadb&#34;&gt;为什么不直接用 QMD / ChromaDB&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;QMD&lt;/strong&gt; 是 Node.js 工具，跨语言调用引入不必要的复杂度&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;ChromaDB&lt;/strong&gt; 是独立数据库服务，对当前项目规模（单机交易）过重&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;SQLite 零部署、Python 内置、性能足够&lt;/strong&gt;（单机万级记录）&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;三阶段演进方案&#34;&gt;三阶段演进方案&lt;/h2&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code&gt;Phase 1 (P0)          Phase 2 (P1)           Phase 3 (P2)
+────────────────────────────────────────────────────────────
+SQLite 辩论历史存储  →  反思机制 (Reflection)  →  语义检索升级
+    ↓                      ↓                      ↓
+持久化 + 查询        事后评估 vs 实际走势      特征向量相似度
+&lt;/code&gt;&lt;/pre&gt;&lt;h3 id=&#34;phase-1-sqlite-辩论历史存储&#34;&gt;Phase 1: SQLite 辩论历史存储&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;目标&lt;/strong&gt;: 辩论结果持久化，支持按股票/日期查询历史。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>https://www.ganyiming.top/qmt/2026-04-06-dfx-architecture-principles/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://www.ganyiming.top/qmt/2026-04-06-dfx-architecture-principles/</guid>
+      <description>&lt;h1 id=&#34;devlog-007-dfx-架构设计原则--qmt-大一统系统工程纪律&#34;&gt;DevLog #007: DfX 架构设计原则 — QMT 大一统系统工程纪律&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-04-06
+&lt;strong&gt;状态&lt;/strong&gt;: 架构共识
+&lt;strong&gt;Tags&lt;/strong&gt;: architecture, design-principles, engineering-discipline&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;背景&#34;&gt;背景&lt;/h2&gt;
+&lt;p&gt;随着 ATMS、WaveMonitor、TradingAgents 等实验性工程合体为&lt;strong&gt;大一统量化基建&lt;/strong&gt;，代码体积正在膨胀。&lt;/p&gt;
+&lt;p&gt;为了抵御熵增，我们确立以下 &lt;strong&gt;Design for X&lt;/strong&gt; 的系统级工程纪律。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;一design-for-maintainability--以减法为核心&#34;&gt;一、Design for Maintainability — 以&amp;quot;减法&amp;quot;为核心&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;痛点&lt;/strong&gt;：量化项目很容易留下大量&amp;quot;废弃的因子、没用的回测废稿、不再调用的模块&amp;quot;。&lt;/p&gt;
+&lt;h3 id=&#34;激进删除原则&#34;&gt;激进删除原则&lt;/h3&gt;
+&lt;blockquote&gt;
+&lt;p&gt;只要是被 V7.1 Titan 或新版 qss 证明已超越的旧概念（如老版的 TA-Lib 逐行遍历、老版的提示词生成器），一旦替换，&lt;strong&gt;连注释都不要留，直接物理删除文件&lt;/strong&gt;。&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;p&gt;&lt;strong&gt;理由&lt;/strong&gt;：在 Git 时代，代码库不应该做垃圾场。精简的代码库是对接替者（包括未来维护的 AI）最大的仁慈。&lt;/p&gt;
+&lt;h3 id=&#34;面向-protocol-的解耦&#34;&gt;面向 Protocol 的解耦&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;设计准则&lt;/strong&gt;：杜绝&amp;quot;意大利面条式&amp;quot;的深层类继承。&lt;/p&gt;
+&lt;p&gt;例如任何只需要历史行情的数据，只约束其入参必须符合 &lt;code&gt;typing.Protocol&lt;/code&gt;：&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;class&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;BarProvider&lt;/span&gt;(Protocol):
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#a6e22e&#34;&gt;@property&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;open&lt;/span&gt;(self) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; pd&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;Series: &lt;span style=&#34;color:#f92672&#34;&gt;...&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#a6e22e&#34;&gt;@property&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;high&lt;/span&gt;(self) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; pd&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;Series: &lt;span style=&#34;color:#f92672&#34;&gt;...&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#a6e22e&#34;&gt;@property&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;low&lt;/span&gt;(self) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; pd&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;Series: &lt;span style=&#34;color:#f92672&#34;&gt;...&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#a6e22e&#34;&gt;@property&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;    &lt;span style=&#34;color:#66d9ef&#34;&gt;def&lt;/span&gt; &lt;span style=&#34;color:#a6e22e&#34;&gt;close&lt;/span&gt;(self) &lt;span style=&#34;color:#f92672&#34;&gt;-&amp;gt;&lt;/span&gt; pd&lt;span style=&#34;color:#f92672&#34;&gt;.&lt;/span&gt;Series: &lt;span style=&#34;color:#f92672&#34;&gt;...&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;而不是强迫它继承一个巨大的 &lt;code&gt;BaseDataFeed&lt;/code&gt; 基类。&lt;/p&gt;
+&lt;blockquote&gt;
+&lt;p&gt;★ Insight ─────────────────────────────────────
+&lt;strong&gt;Protocol vs 继承&lt;/strong&gt;：继承是&amp;quot;我是谁&amp;quot;，Protocol 是&amp;quot;我能做什么&amp;quot;。
+用 Protocol 解耦的好处是：你只需要关心数据提供者有没有你需要的方法，
+而不是关心它在类继承树中的位置。
+──────────────────────────────────────────────────&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>https://www.ganyiming.top/qmt/2026-04-08-sps-atr-buffer-fix/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://www.ganyiming.top/qmt/2026-04-08-sps-atr-buffer-fix/</guid>
+      <description>&lt;h1 id=&#34;devlog-009-sps-atr-缓冲修复--均线滞后性的边界弹性设计&#34;&gt;DevLog #009: SPS ATR 缓冲修复 — 均线滞后性的边界弹性设计&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-04-08
+&lt;strong&gt;状态&lt;/strong&gt;: 已修复
+&lt;strong&gt;Tags&lt;/strong&gt;: sps, vector-engine, atr, trend-detection&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;问题描述&#34;&gt;问题描述&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;现象&lt;/strong&gt;: &lt;code&gt;market_radar.py&lt;/code&gt; 和 &lt;code&gt;vector_engine.py&lt;/code&gt; 使用硬 MA 阈值判断趋势。大涨后价格仍略低于 MA20/MA60 时，系统错误判定为 BEAR/GREEN_WAVE。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;用户痛点&lt;/strong&gt;: 均线是滞后指标，一天的大涨不足以让 MA 穿越，但用户体感&amp;quot;明显不是空头&amp;quot;。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;修复方案&#34;&gt;修复方案&lt;/h2&gt;
+&lt;h3 id=&#34;market_radarpy-修复&#34;&gt;market_radar.py 修复&lt;/h3&gt;
+&lt;p&gt;加 ATR(14) × 0.5 缓冲，价格贴线时 &lt;strong&gt;BEAR → CHOPPY&lt;/strong&gt;&lt;/p&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;&#34;&gt;&lt;code class=&#34;language-python&#34; data-lang=&#34;python&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 修复前&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; price &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; ma20: BEAR
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 修复后&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;if&lt;/span&gt; price &lt;span style=&#34;color:#f92672&#34;&gt;&amp;lt;&lt;/span&gt; ma20 &lt;span style=&#34;color:#f92672&#34;&gt;-&lt;/span&gt; atr &lt;span style=&#34;color:#f92672&#34;&gt;*&lt;/span&gt; &lt;span style=&#34;color:#ae81ff&#34;&gt;0.5&lt;/span&gt;: BEAR
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#66d9ef&#34;&gt;else&lt;/span&gt;: CHOPPY  &lt;span style=&#34;color:#75715e&#34;&gt;# 贴线区域不轻易下定论&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h3 id=&#34;vector_enginepy-修复&#34;&gt;vector_engine.py 修复&lt;/h3&gt;
+&lt;p&gt;加 ATR × 0.15 缓冲，MA5 略低于 MA21 但在缓冲区内时标 &lt;strong&gt;GRAY_ZONE&lt;/strong&gt; 而非 GREEN_WAVE&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>https://www.ganyiming.top/qmt/2026-04-08-sps-openclaw-skill-deployment/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://www.ganyiming.top/qmt/2026-04-08-sps-openclaw-skill-deployment/</guid>
+      <description>&lt;h1 id=&#34;devlog-011-sps-openclaw-skill-部署架构--本地引用-vs-http-api&#34;&gt;DevLog #011: SPS OpenClaw Skill 部署架构 — 本地引用 vs HTTP API&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-04-08
+&lt;strong&gt;状态&lt;/strong&gt;: 已建立
+&lt;strong&gt;Tags&lt;/strong&gt;: sps, openclaw, skill, deployment&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;当前模式-本地引用&#34;&gt;当前模式: 本地引用&lt;/h2&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code&gt;~/.agents/skills/sps/
+  ├── SKILL.md                 ← 能力声明
+  ├── scripts/run_sps.py       ← 入口路由器
+  ├── config/*.yaml            ← 只读拷贝
+  ├── data/.watchlist_a.json   ← 只读拷贝
+  └── .qmt_root                ← 指向 /Users/james/code/qmt/qmt
+                                  ↑ 运行时动态 import sps/ 下全部代码
+&lt;/code&gt;&lt;/pre&gt;&lt;h3 id=&#34;关键设计&#34;&gt;关键设计&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;不是独立部署&lt;/strong&gt;。&lt;code&gt;run_sps.py&lt;/code&gt; 通过 &lt;code&gt;.qmt_root&lt;/code&gt; 找到项目根，把 &lt;code&gt;sps/&lt;/code&gt; 加入 &lt;code&gt;sys.path&lt;/code&gt;，直接 import 原始模块。&lt;/p&gt;
+&lt;p&gt;改了代码&lt;strong&gt;自动生效&lt;/strong&gt;，只有 config/watchlist 变了才需重跑 &lt;code&gt;sync_sps_skill.sh&lt;/code&gt;。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;依赖链&#34;&gt;依赖链&lt;/h2&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code&gt;run_sps.py (入口)
+  ├── wave_monitor.py ← db_manager, data_adapter, vector_engine
+  ├── market_radar.py ← baostock
+  ├── backtest.py ← db_manager, vector_engine, strategy_b
+  └── hk_us_monitor.py
+
+vector_engine.py ← strategy_b
+db_manager.py ← data_adapter
+data_adapter.py ← qdata / xtquant / akshare (QMT数据源)
+&lt;/code&gt;&lt;/pre&gt;&lt;hr&gt;
+&lt;h2 id=&#34;未来计划-统一-http-api-部署&#34;&gt;未来计划: 统一 HTTP API 部署&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;Why&lt;/strong&gt;: 当前 &lt;code&gt;data_adapter.py&lt;/code&gt; 硬依赖 QMT 客户端（qdata/xtquant），打包到别的机器上数据源就断了。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>https://www.ganyiming.top/qmt/2026-04-09-gateway-robustness-fixlist/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://www.ganyiming.top/qmt/2026-04-09-gateway-robustness-fixlist/</guid>
+      <description>&lt;h1 id=&#34;devlog-005-qmt-gateway-鲁棒性修复清单--p0-p2-分级扫雷&#34;&gt;DevLog #005: QMT Gateway 鲁棒性修复清单 — P0-P2 分级扫雷&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-04-09
+&lt;strong&gt;状态&lt;/strong&gt;: 修复中
+&lt;strong&gt;Tags&lt;/strong&gt;: qmt-gateway, robustness, grpc, thread-safety&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;背景&#34;&gt;背景&lt;/h2&gt;
+&lt;p&gt;目标：把 QMT Gateway 做到**&amp;ldquo;可长期稳定支撑批回测 + 准实盘（正在测）+ 实盘执行&amp;rdquo;**的工程质量。&lt;/p&gt;
+&lt;p&gt;本文偏工程健壮性（正确性、隔离性、可观测性、可恢复性），不讨论策略收益逻辑。&lt;/p&gt;
+&lt;p&gt;涉及模块：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;qmt_gateway/*&lt;/code&gt;（网关本体）&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;qdata/qdata/adapters/qmt_remote_adapter.py&lt;/code&gt;（客户端适配器）&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;qss/*&lt;/code&gt;（交易执行器 / 远端执行服务）&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;p0-must-fix-today&#34;&gt;P0: Must Fix Today&lt;/h2&gt;
+&lt;p&gt;这些问题&lt;strong&gt;不修会导致&lt;/strong&gt;：数据错乱、订阅串流、卡死/随机失败、交易服务不可用。&lt;/p&gt;
+&lt;h3 id=&#34;p0-1-实时订阅的消息隔离与正确性&#34;&gt;P0-1: 实时订阅的消息隔离与正确性&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;症状&lt;/strong&gt;：多个订阅者同时订阅时会串流/抢消息；订阅 A 可能收到订阅 B 的 tick；或漏推。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;位置&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;qmt_gateway/services/data_service.py&lt;/code&gt;（&lt;code&gt;SubscribeQuote&lt;/code&gt; 直接消费一个全局流并 yield）&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;qmt_gateway/bridge/xtdata_bridge.py&lt;/code&gt;（单个 &lt;code&gt;_tick_queue&lt;/code&gt; + &lt;code&gt;tick_stream()&lt;/code&gt;）&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;修复方向&lt;/strong&gt;：把 tick 分发改成 fan-out/pub-sub（每个订阅者独立队列），并按 &lt;code&gt;request.symbols&lt;/code&gt; 做过滤。&lt;/p&gt;
+&lt;h3 id=&#34;p0-2-asyncioqueue-跨线程使用线程安全问题&#34;&gt;P0-2: &lt;code&gt;asyncio.Queue&lt;/code&gt; 跨线程使用（线程安全问题）&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;症状&lt;/strong&gt;：tick 回调可能在 xtdata 线程里触发，但 &lt;code&gt;asyncio.Queue.put_nowait()&lt;/code&gt; 不是线程安全；会出现随机异常、丢消息、甚至卡死。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;位置&lt;/strong&gt;：&lt;code&gt;qmt_gateway/bridge/xtdata_bridge.py&lt;/code&gt;（&lt;code&gt;on_data()&lt;/code&gt; -&amp;gt; &lt;code&gt;_tick_queue.put_nowait()&lt;/code&gt;）&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>https://www.ganyiming.top/qmt/2026-04-09-tss-self-evolution/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://www.ganyiming.top/qmt/2026-04-09-tss-self-evolution/</guid>
+      <description>&lt;h1 id=&#34;devlog-002-tss-策略自进化--正在测-机制深度讨论&#34;&gt;DevLog #002: TSS 策略自进化 — &amp;ldquo;正在测&amp;rdquo; 机制深度讨论&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-04-09
+&lt;strong&gt;状态&lt;/strong&gt;: 讨论稿
+&lt;strong&gt;Tags&lt;/strong&gt;: tss, strategy-evolution, 正在测, 评价体系&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;核心问题&#34;&gt;核心问题&lt;/h2&gt;
+&lt;p&gt;TSS 是否具备&amp;quot;自我迭代能力&amp;quot;？如果可以，应该如何设计？&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;讨论结论&#34;&gt;讨论结论&lt;/h2&gt;
+&lt;p&gt;&lt;code&gt;TSS&lt;/code&gt; 可以具备一种&lt;strong&gt;有限但很有价值的&amp;quot;自我迭代能力&amp;quot;&lt;/strong&gt;，但它不是&amp;quot;自己变聪明&amp;quot;，而是：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;每天持续生成候选策略或候选变体&lt;/li&gt;
+&lt;li&gt;用最新行情做&amp;quot;正在测&amp;quot;的在线观察&lt;/li&gt;
+&lt;li&gt;把观察结果写入记忆&lt;/li&gt;
+&lt;li&gt;定期根据记忆淘汰、降权、晋升、重组策略&lt;/li&gt;
+&lt;/ul&gt;
+&lt;blockquote&gt;
+&lt;p&gt;★ Insight ─────────────────────────────────────
+&lt;strong&gt;&amp;ldquo;正在测&amp;quot;不是回测替代品&lt;/strong&gt;，而是回测之后的下一层。
+回测回答&amp;quot;如果过去这样做，结果会怎样&amp;rdquo;
+&amp;ldquo;正在测&amp;quot;回答&amp;quot;如果从今天开始持续跟踪，这个策略在当前市场状态下是不是还活着&amp;rdquo;
+──────────────────────────────────────────────────&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;正在测-的本质&#34;&gt;&amp;ldquo;正在测&amp;rdquo; 的本质&lt;/h2&gt;
+&lt;p&gt;它更像：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;影子组合&lt;/li&gt;
+&lt;li&gt;模拟联赛&lt;/li&gt;
+&lt;li&gt;在线观察期&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;策略生命周期：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;strong&gt;历史回测&lt;/strong&gt;：先证明它过去不是纯噪声&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;滚动验证&lt;/strong&gt;：再看它在不同年份和市场阶段是否稳定&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;正在测&lt;/strong&gt;：让它用最新市场数据持续接受现实检验&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;晋升或淘汰&lt;/strong&gt;：根据在线表现决定是否进入正式策略池&lt;/li&gt;
+&lt;/ol&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;策略池四层设计&#34;&gt;策略池四层设计&lt;/h2&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code&gt;┌─────────────────────────────────────────────────────────────┐
+│  候选池                                                          │
+│  - 只做离线回测与稳健性筛选                                         │
+├─────────────────────────────────────────────────────────────┤
+│  观察池（正在测）                                                  │
+│  - 每天跟随最新行情更新表现                                           │
+│  - 不直接决定正式组合                                               │
+│  - 重点观察是否延续历史优势                                          │
+├─────────────────────────────────────────────────────────────┤
+│  生产池                                                            │
+│  - 已通过历史和在线双重验证                                           │
+│  - 可作为正式优选策略候选                                            │
+├─────────────────────────────────────────────────────────────┤
+│  冻结池                                                            │
+│  - 曾经有效但近期失效                                               │
+│  - 暂不删除，保留历史记忆                                            │
+│  - 等待未来市场状态重新匹配                                           │
+└─────────────────────────────────────────────────────────────┘
+&lt;/code&gt;&lt;/pre&gt;&lt;blockquote&gt;
+&lt;p&gt;★ Insight ─────────────────────────────────────
+&lt;strong&gt;大多数策略不是&amp;quot;永远死&amp;quot;，而是&amp;quot;阶段失效&amp;quot;&lt;/strong&gt;。
+冻结池的设计让系统保留了&amp;quot;等待市场状态重新匹配&amp;quot;的可能性。
+──────────────────────────────────────────────────&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>https://www.ganyiming.top/qmt/2026-04-12-no-signal-func-analysis/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://www.ganyiming.top/qmt/2026-04-12-no-signal-func-analysis/</guid>
+      <description>&lt;h1 id=&#34;devlog-003-no_signal_func-问题分析--741个策略中90个无法提取信号函数&#34;&gt;DevLog #003: no_signal_func 问题分析 — 741个策略中90个无法提取信号函数&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-04-12
+&lt;strong&gt;状态&lt;/strong&gt;: 分析完成
+&lt;strong&gt;Tags&lt;/strong&gt;: strategy-factory, issue-analysis, signal-extraction, 平台兼容性&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;概述&#34;&gt;概述&lt;/h2&gt;
+&lt;p&gt;对 &lt;code&gt;out/&lt;/code&gt; 目录下所有 741 个策略 JSON 进行分析，发现 &lt;strong&gt;90 个策略（12.1%）的 &lt;code&gt;pure_alpha_function&lt;/code&gt; 字段为 &lt;code&gt;null&lt;/code&gt;&lt;/strong&gt;，无法参与回测。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;总体统计&#34;&gt;总体统计&lt;/h2&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;类别&lt;/th&gt;
+          &lt;th&gt;数量&lt;/th&gt;
+          &lt;th&gt;占比&lt;/th&gt;
+          &lt;th&gt;处理建议&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;strong&gt;A类（可直接修复）&lt;/strong&gt;&lt;/td&gt;
+          &lt;td&gt;~5 个&lt;/td&gt;
+          &lt;td&gt;0.7%&lt;/td&gt;
+          &lt;td&gt;通过 LLM 直接生成&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;strong&gt;B类（可重新生成）&lt;/strong&gt;&lt;/td&gt;
+          &lt;td&gt;~58 个&lt;/td&gt;
+          &lt;td&gt;7.8%&lt;/td&gt;
+          &lt;td&gt;模拟 API 或替代数据&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;strong&gt;C类（不可修复）&lt;/strong&gt;&lt;/td&gt;
+          &lt;td&gt;~27 个&lt;/td&gt;
+          &lt;td&gt;3.6%&lt;/td&gt;
+          &lt;td&gt;标记排除，不计入失败率&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;strong&gt;总可修复率&lt;/strong&gt;&lt;/td&gt;
+          &lt;td&gt;~70%&lt;/td&gt;
+          &lt;td&gt;—&lt;/td&gt;
+          &lt;td&gt;修复后预估通过率 4.0% → 12.5%&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;a类可直接修复5个&#34;&gt;A类：可直接修复（5个）&lt;/h2&gt;
+&lt;p&gt;&lt;strong&gt;判定条件&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;pure_alpha_function&lt;/code&gt; 为 null&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;logic_extraction.entry_signals&lt;/code&gt; 有实质性内容&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;quality_assessment.completeness&lt;/code&gt; 为 &lt;code&gt;medium&lt;/code&gt; 或 &lt;code&gt;high&lt;/code&gt;&lt;/li&gt;
+&lt;li&gt;策略描述清晰&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;典型案例&lt;/strong&gt;：&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>https://www.ganyiming.top/qmt/2026-04-13-architecture-guardian-system/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://www.ganyiming.top/qmt/2026-04-13-architecture-guardian-system/</guid>
+      <description>&lt;h1 id=&#34;devlog-004-saf-架构看护体系--需求-特性-测试三角闭环&#34;&gt;DevLog #004: SAF 架构看护体系 — 需求-特性-测试三角闭环&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-04-13
+&lt;strong&gt;状态&lt;/strong&gt;: 已建立
+&lt;strong&gt;Tags&lt;/strong&gt;: architecture, quality-assurance, requirements, testing&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;背景&#34;&gt;背景&lt;/h2&gt;
+&lt;p&gt;随着 SAF 平台规模扩大，如何确保&lt;strong&gt;架构完整性不被侵蚀&lt;/strong&gt;成为重要问题。我们建立了&amp;quot;架构看护体系&amp;quot;，通过三个核心文档形成闭环。&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;三大核心文档&#34;&gt;三大核心文档&lt;/h2&gt;
+&lt;table&gt;
+  &lt;thead&gt;
+      &lt;tr&gt;
+          &lt;th&gt;文档&lt;/th&gt;
+          &lt;th&gt;用途&lt;/th&gt;
+          &lt;th&gt;格式&lt;/th&gt;
+      &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;code&gt;FEATURE_TREE.md&lt;/code&gt;&lt;/td&gt;
+          &lt;td&gt;SAF 完整特性树&lt;/td&gt;
+          &lt;td&gt;特性 → 子特性 → 孙子特性&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;code&gt;SYSTEM_REQUIREMENTS.md&lt;/code&gt;&lt;/td&gt;
+          &lt;td&gt;系统需求规格&lt;/td&gt;
+          &lt;td&gt;REQ-ID 格式&lt;/td&gt;
+      &lt;/tr&gt;
+      &lt;tr&gt;
+          &lt;td&gt;&lt;code&gt;TEST_DESIGN.md&lt;/code&gt;&lt;/td&gt;
+          &lt;td&gt;系统级测试设计&lt;/td&gt;
+          &lt;td&gt;基于需求规格&lt;/td&gt;
+      &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;闭环流程&#34;&gt;闭环流程&lt;/h2&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code&gt;┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│   需求规格 (SYSTEM_REQUIREMENTS.md)                          │
+│       │                                                     │
+│       ▼                                                     │
+│   特性树 (FEATURE_TREE.md)                                   │
+│       │                                                     │
+│       ▼                                                     │
+│   测试用例 (TEST_DESIGN.md)                                  │
+│       │                                                     │
+│       ▼                                                     │
+│   ┌─────────────────┐                                      │
+│   │  通过 = 功能正确  │                                      │
+│   └─────────────────┘                                      │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+&lt;/code&gt;&lt;/pre&gt;&lt;hr&gt;
+&lt;h2 id=&#34;看护机制&#34;&gt;看护机制&lt;/h2&gt;
+&lt;pre tabindex=&#34;0&#34;&gt;&lt;code&gt;CI/CD Pipeline:
+  ├── pytest (单元测试)
+  ├── pytest --cov (覆盖率检查)
+  └── 全部通过 → 部署
+&lt;/code&gt;&lt;/pre&gt;&lt;h3 id=&#34;验证命令&#34;&gt;验证命令&lt;/h3&gt;
+&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;&#34;&gt;&lt;code class=&#34;language-bash&#34; data-lang=&#34;bash&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 运行 SAF 所有测试&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;cd SAF &lt;span style=&#34;color:#f92672&#34;&gt;&amp;amp;&amp;amp;&lt;/span&gt; pytest tests/ -v --cov&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;saf --cov-report&lt;span style=&#34;color:#f92672&#34;&gt;=&lt;/span&gt;term-missing
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;&lt;span style=&#34;color:#75715e&#34;&gt;# 测试通过 = 系统功能良好&lt;/span&gt;
+&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;hr&gt;
+&lt;h2 id=&#34;看护目标&#34;&gt;看护目标&lt;/h2&gt;
+&lt;p&gt;通过以上机制，确保：&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>https://www.ganyiming.top/qmt/2026-04-14-backtest-engine-selection/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://www.ganyiming.top/qmt/2026-04-14-backtest-engine-selection/</guid>
+      <description>&lt;h1 id=&#34;devlog-001-回测引擎选型辩论--qlib-vs-vectorbt-vs-自研&#34;&gt;DevLog #001: 回测引擎选型辩论 — Qlib vs VectorBT vs 自研&lt;/h1&gt;
+&lt;p&gt;&lt;strong&gt;日期&lt;/strong&gt;: 2026-04-14
+&lt;strong&gt;状态&lt;/strong&gt;: 已定稿
+&lt;strong&gt;Tags&lt;/strong&gt;: architecture, backtest-engine, qlib, duckdb&lt;/p&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;背景&#34;&gt;背景&lt;/h2&gt;
+&lt;p&gt;在 SAF 平台开发过程中，我们面临一个关键架构决策：&lt;strong&gt;回测引擎层应该如何演进？&lt;/strong&gt;&lt;/p&gt;
+&lt;p&gt;已有的组件：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;code&gt;TimeSeriesExecutionEngine&lt;/code&gt; — 时序执行框架&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;PanelExecutionEngine&lt;/code&gt; — 截面执行框架&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;VnPyAdapterEngine&lt;/code&gt; — vn.py CTA 适配器&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;BarStore (SQLite)&lt;/code&gt; — K 线持久化&lt;/li&gt;
+&lt;li&gt;&lt;code&gt;legacy/evaluate/engine.py&lt;/code&gt; — 历史包袱&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;候选引入：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;strong&gt;Qlib&lt;/strong&gt; — 截面评价 + IC/IR + 参数扫描&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;VectorBT&lt;/strong&gt; — 参数扫描&lt;/li&gt;
+&lt;li&gt;&lt;strong&gt;DuckDB&lt;/strong&gt; — 多数据源 ETL Hub&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;讨论焦点&#34;&gt;讨论焦点&lt;/h2&gt;
+&lt;h3 id=&#34;1-vectorbt-的去留&#34;&gt;1. VectorBT 的去留&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;初始提案&lt;/strong&gt;：用 VectorBT 做参数扫描，替代手写参数枚举。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;辩论过程&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;支持引入方：VectorBT 的参数扫描 API 很成熟，可以节省大量开发时间&lt;/li&gt;
+&lt;li&gt;反对引入方：Qlib 已经覆盖了参数扫描能力，引入 VectorBT 会增加额外依赖&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;&lt;strong&gt;最终结论&lt;/strong&gt;：&lt;strong&gt;不引入 VectorBT&lt;/strong&gt;，理由是 Qlib 已覆盖其核心能力。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title></title>
       <link>https://www.ganyiming.top/qmt/ai_harness_design/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://www.ganyiming.top/qmt/ai_harness_design/</guid>

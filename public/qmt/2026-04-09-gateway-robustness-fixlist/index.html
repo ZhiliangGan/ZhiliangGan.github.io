@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Enjoy your life! Let&#39;s Claude!</title>
+<meta name="keywords" content="">
+<meta name="description" content="DevLog #005: QMT Gateway 鲁棒性修复清单 — P0-P2 分级扫雷
+日期: 2026-04-09
+状态: 修复中
+Tags: qmt-gateway, robustness, grpc, thread-safety
+
+背景
+目标：把 QMT Gateway 做到**&ldquo;可长期稳定支撑批回测 &#43; 准实盘（正在测）&#43; 实盘执行&rdquo;**的工程质量。
+本文偏工程健壮性（正确性、隔离性、可观测性、可恢复性），不讨论策略收益逻辑。
+涉及模块：
+
+qmt_gateway/*（网关本体）
+qdata/qdata/adapters/qmt_remote_adapter.py（客户端适配器）
+qss/*（交易执行器 / 远端执行服务）
+
+
+P0: Must Fix Today
+这些问题不修会导致：数据错乱、订阅串流、卡死/随机失败、交易服务不可用。
+P0-1: 实时订阅的消息隔离与正确性
+症状：多个订阅者同时订阅时会串流/抢消息；订阅 A 可能收到订阅 B 的 tick；或漏推。
+位置：
+
+qmt_gateway/services/data_service.py（SubscribeQuote 直接消费一个全局流并 yield）
+qmt_gateway/bridge/xtdata_bridge.py（单个 _tick_queue &#43; tick_stream()）
+
+修复方向：把 tick 分发改成 fan-out/pub-sub（每个订阅者独立队列），并按 request.symbols 做过滤。
+P0-2: asyncio.Queue 跨线程使用（线程安全问题）
+症状：tick 回调可能在 xtdata 线程里触发，但 asyncio.Queue.put_nowait() 不是线程安全；会出现随机异常、丢消息、甚至卡死。
+位置：qmt_gateway/bridge/xtdata_bridge.py（on_data() -&gt; _tick_queue.put_nowait()）">
+<meta name="author" content="James Gan">
+<link rel="canonical" href="https://www.ganyiming.top/qmt/2026-04-09-gateway-robustness-fixlist/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.47e51c7d8489b002361bac156ce9a0a8776d08c5462c2cee95801efafdd90d35.css" integrity="sha256-R&#43;UcfYSJsAI2G6wVbOmgqHdtCMVGLCzulYAe&#43;v3ZDTU=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.ganyiming.top/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.ganyiming.top/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.ganyiming.top/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.ganyiming.top/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.ganyiming.top/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.ganyiming.top/qmt/2026-04-09-gateway-robustness-fixlist/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://www.ganyiming.top/qmt/2026-04-09-gateway-robustness-fixlist/">
+  <meta property="og:site_name" content="Enjoy your life! Let&#39;s Claude!">
+  <meta property="og:title" content="Enjoy your life! Let&#39;s Claude!">
+  <meta property="og:description" content="DevLog #005: QMT Gateway 鲁棒性修复清单 — P0-P2 分级扫雷 日期: 2026-04-09 状态: 修复中 Tags: qmt-gateway, robustness, grpc, thread-safety
+背景 目标：把 QMT Gateway 做到**“可长期稳定支撑批回测 &#43; 准实盘（正在测）&#43; 实盘执行”**的工程质量。
+本文偏工程健壮性（正确性、隔离性、可观测性、可恢复性），不讨论策略收益逻辑。
+涉及模块：
+qmt_gateway/*（网关本体） qdata/qdata/adapters/qmt_remote_adapter.py（客户端适配器） qss/*（交易执行器 / 远端执行服务） P0: Must Fix Today 这些问题不修会导致：数据错乱、订阅串流、卡死/随机失败、交易服务不可用。
+P0-1: 实时订阅的消息隔离与正确性 症状：多个订阅者同时订阅时会串流/抢消息；订阅 A 可能收到订阅 B 的 tick；或漏推。
+位置：
+qmt_gateway/services/data_service.py（SubscribeQuote 直接消费一个全局流并 yield） qmt_gateway/bridge/xtdata_bridge.py（单个 _tick_queue &#43; tick_stream()） 修复方向：把 tick 分发改成 fan-out/pub-sub（每个订阅者独立队列），并按 request.symbols 做过滤。
+P0-2: asyncio.Queue 跨线程使用（线程安全问题） 症状：tick 回调可能在 xtdata 线程里触发，但 asyncio.Queue.put_nowait() 不是线程安全；会出现随机异常、丢消息、甚至卡死。
+位置：qmt_gateway/bridge/xtdata_bridge.py（on_data() -&gt; _tick_queue.put_nowait()）">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="qmt">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Enjoy your life! Let&#39;s Claude!">
+  <meta name="twitter:description" content="DevLog #005: QMT Gateway 鲁棒性修复清单 — P0-P2 分级扫雷 日期: 2026-04-09 状态: 修复中 Tags: qmt-gateway, robustness, grpc, thread-safety
+背景 目标：把 QMT Gateway 做到**“可长期稳定支撑批回测 &#43; 准实盘（正在测）&#43; 实盘执行”**的工程质量。
+本文偏工程健壮性（正确性、隔离性、可观测性、可恢复性），不讨论策略收益逻辑。
+涉及模块：
+qmt_gateway/*（网关本体） qdata/qdata/adapters/qmt_remote_adapter.py（客户端适配器） qss/*（交易执行器 / 远端执行服务） P0: Must Fix Today 这些问题不修会导致：数据错乱、订阅串流、卡死/随机失败、交易服务不可用。
+P0-1: 实时订阅的消息隔离与正确性 症状：多个订阅者同时订阅时会串流/抢消息；订阅 A 可能收到订阅 B 的 tick；或漏推。
+位置：
+qmt_gateway/services/data_service.py（SubscribeQuote 直接消费一个全局流并 yield） qmt_gateway/bridge/xtdata_bridge.py（单个 _tick_queue &#43; tick_stream()） 修复方向：把 tick 分发改成 fan-out/pub-sub（每个订阅者独立队列），并按 request.symbols 做过滤。
+P0-2: asyncio.Queue 跨线程使用（线程安全问题） 症状：tick 回调可能在 xtdata 线程里触发，但 asyncio.Queue.put_nowait() 不是线程安全；会出现随机异常、丢消息、甚至卡死。
+位置：qmt_gateway/bridge/xtdata_bridge.py（on_data() -&gt; _tick_queue.put_nowait()）">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Qmts",
+      "item": "https://www.ganyiming.top/qmt/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "",
+      "item": "https://www.ganyiming.top/qmt/2026-04-09-gateway-robustness-fixlist/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "",
+  "name": "",
+  "description": "DevLog #005: QMT Gateway 鲁棒性修复清单 — P0-P2 分级扫雷 日期: 2026-04-09 状态: 修复中 Tags: qmt-gateway, robustness, grpc, thread-safety\n背景 目标：把 QMT Gateway 做到**\u0026ldquo;可长期稳定支撑批回测 + 准实盘（正在测）+ 实盘执行\u0026rdquo;**的工程质量。\n本文偏工程健壮性（正确性、隔离性、可观测性、可恢复性），不讨论策略收益逻辑。\n涉及模块：\nqmt_gateway/*（网关本体） qdata/qdata/adapters/qmt_remote_adapter.py（客户端适配器） qss/*（交易执行器 / 远端执行服务） P0: Must Fix Today 这些问题不修会导致：数据错乱、订阅串流、卡死/随机失败、交易服务不可用。\nP0-1: 实时订阅的消息隔离与正确性 症状：多个订阅者同时订阅时会串流/抢消息；订阅 A 可能收到订阅 B 的 tick；或漏推。\n位置：\nqmt_gateway/services/data_service.py（SubscribeQuote 直接消费一个全局流并 yield） qmt_gateway/bridge/xtdata_bridge.py（单个 _tick_queue + tick_stream()） 修复方向：把 tick 分发改成 fan-out/pub-sub（每个订阅者独立队列），并按 request.symbols 做过滤。\nP0-2: asyncio.Queue 跨线程使用（线程安全问题） 症状：tick 回调可能在 xtdata 线程里触发，但 asyncio.Queue.put_nowait() 不是线程安全；会出现随机异常、丢消息、甚至卡死。\n位置：qmt_gateway/bridge/xtdata_bridge.py（on_data() -\u0026gt; _tick_queue.put_nowait()）\n",
+  "keywords": [
+    
+  ],
+  "articleBody": "DevLog #005: QMT Gateway 鲁棒性修复清单 — P0-P2 分级扫雷 日期: 2026-04-09 状态: 修复中 Tags: qmt-gateway, robustness, grpc, thread-safety\n背景 目标：把 QMT Gateway 做到**“可长期稳定支撑批回测 + 准实盘（正在测）+ 实盘执行”**的工程质量。\n本文偏工程健壮性（正确性、隔离性、可观测性、可恢复性），不讨论策略收益逻辑。\n涉及模块：\nqmt_gateway/*（网关本体） qdata/qdata/adapters/qmt_remote_adapter.py（客户端适配器） qss/*（交易执行器 / 远端执行服务） P0: Must Fix Today 这些问题不修会导致：数据错乱、订阅串流、卡死/随机失败、交易服务不可用。\nP0-1: 实时订阅的消息隔离与正确性 症状：多个订阅者同时订阅时会串流/抢消息；订阅 A 可能收到订阅 B 的 tick；或漏推。\n位置：\nqmt_gateway/services/data_service.py（SubscribeQuote 直接消费一个全局流并 yield） qmt_gateway/bridge/xtdata_bridge.py（单个 _tick_queue + tick_stream()） 修复方向：把 tick 分发改成 fan-out/pub-sub（每个订阅者独立队列），并按 request.symbols 做过滤。\nP0-2: asyncio.Queue 跨线程使用（线程安全问题） 症状：tick 回调可能在 xtdata 线程里触发，但 asyncio.Queue.put_nowait() 不是线程安全；会出现随机异常、丢消息、甚至卡死。\n位置：qmt_gateway/bridge/xtdata_bridge.py（on_data() -\u003e _tick_queue.put_nowait()）\n修复方向：使用线程安全桥接（例如 queue.Queue + asyncio.to_thread/executor），或在 aio loop 上用 loop.call_soon_threadsafe(...) 入队。\n★ Insight ───────────────────────────────────── asyncio.Queue 本身不是线程安全的。 当 xtdata 的 C 线程回调触发 Python 的 on_data() 时， 直接在那个线程调用 asyncio.Queue.put_nowait() 是危险的。 需要用 loop.call_soon_threadsafe() 将数据送入 asyncio 的事件循环。 ──────────────────────────────────────────────────\nP0-3: xtdata 订阅回调未显式绑定 症状：subscribe_quote() 之后 tick_stream() 永远没有数据。\n位置：qmt_gateway/bridge/xtdata_bridge.py（定义了 on_data，但没有看到把它注册给 xtdata）\n修复方向：确认 xtdata API 的订阅签名，显式传入/注册回调。\nP0-4: gRPC 混用 grpc.aio + asyncio.run 症状：并发、已有 event loop、长时间运行时表现不稳定。\n位置：qdata/qdata/adapters/qmt_remote_adapter.py\n修复方向：改为同步 grpc.insecure_channel；或将 aio 调用统一放到后台 loop/thread。\nP0-5: 交易服务初始化参数丢失 症状：JSON-RPC 8080 常年起不来/或者 executor 行为不符合 account 配置。\n位置：qmt_gateway/bridge/xttrader_bridge.py（create_qmt_executor 传入了参数但 QMTExecutor(**kwargs) 没吃到）\nP1: Should Fix Soon 这些问题不一定立即炸，但会严重影响\"稳定批跑/定位问题/快速恢复\"。\nP1-1: tick 队列无界（潜在 OOM） 症状：行情高频时内存持续上涨。\n位置：xtdata_bridge.py（self._tick_queue: asyncio.Queue = asyncio.Queue()）\n修复方向：给队列设 maxsize，并实现明确的丢弃策略。\nP1-2: 订阅引用计数缺少并发保护 症状：并发订阅/取消订阅时，引用计数可能被写坏。\n位置：xtdata_bridge.py（_sub_ref_count 的增减没有 lock）\nP1-3: gRPC 请求超时与取消处理不完整 症状：客户端/服务端遇到网络抖动会挂很久；取消订阅后服务端协程可能仍阻塞。\n修复方向：统一 timeout、重试（指数退避）、可区分的错误码。\nP1-4: 时间戳/时区语义需要统一 症状：bar 的 time 既可能来自 YYYYMMDD 也可能来自毫秒时间戳；客户端又把它当 UTC epoch。\n修复方向：协议明确 time 的时区与含义（推荐 epoch_ms）。\nP2: Nice To Have 这些是工程化加分项，对长期运营和扩展很关键。\nP2-1: 鉴权与访问控制 现状：insecure_channel，局域网内任何人可访问数据/交易接口。\n方向：在 gRPC metadata 加 token；或 mTLS。\nP2-2: 指标与追踪 方向：请求计数/耗时/错误码/订阅数/队列长度/丢包数。\nValidation Checklist 单订阅者实时行情：订阅后 5 秒内收到 tick 双订阅者隔离：A/B 订阅不同 symbol，互不串流 并发压测：N=10 并发 GetMarketData 不崩、不死锁 异常注入：网关断网/xtdata 崩/下载失败时快速降级 Generated from: docs/GATEWAY_ROBUSTNESS_FIXLIST.md\n",
+  "wordCount" : "222",
+  "inLanguage": "en",
+  "datePublished": "0001-01-01T00:00:00Z",
+  "dateModified": "0001-01-01T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "James Gan"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.ganyiming.top/qmt/2026-04-09-gateway-robustness-fixlist/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Enjoy your life! Let's Claude!",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.ganyiming.top/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.ganyiming.top/" accesskey="h" title="Enjoy your life! Let&#39;s Claude! (Alt + H)">Enjoy your life! Let&#39;s Claude!</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="https://www.ganyiming.top/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      
+    </h1>
+    <div class="post-meta"><span>James Gan</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="devlog-005-qmt-gateway-鲁棒性修复清单--p0-p2-分级扫雷">DevLog #005: QMT Gateway 鲁棒性修复清单 — P0-P2 分级扫雷<a hidden class="anchor" aria-hidden="true" href="#devlog-005-qmt-gateway-鲁棒性修复清单--p0-p2-分级扫雷">#</a></h1>
+<p><strong>日期</strong>: 2026-04-09
+<strong>状态</strong>: 修复中
+<strong>Tags</strong>: qmt-gateway, robustness, grpc, thread-safety</p>
+<hr>
+<h2 id="背景">背景<a hidden class="anchor" aria-hidden="true" href="#背景">#</a></h2>
+<p>目标：把 QMT Gateway 做到**&ldquo;可长期稳定支撑批回测 + 准实盘（正在测）+ 实盘执行&rdquo;**的工程质量。</p>
+<p>本文偏工程健壮性（正确性、隔离性、可观测性、可恢复性），不讨论策略收益逻辑。</p>
+<p>涉及模块：</p>
+<ul>
+<li><code>qmt_gateway/*</code>（网关本体）</li>
+<li><code>qdata/qdata/adapters/qmt_remote_adapter.py</code>（客户端适配器）</li>
+<li><code>qss/*</code>（交易执行器 / 远端执行服务）</li>
+</ul>
+<hr>
+<h2 id="p0-must-fix-today">P0: Must Fix Today<a hidden class="anchor" aria-hidden="true" href="#p0-must-fix-today">#</a></h2>
+<p>这些问题<strong>不修会导致</strong>：数据错乱、订阅串流、卡死/随机失败、交易服务不可用。</p>
+<h3 id="p0-1-实时订阅的消息隔离与正确性">P0-1: 实时订阅的消息隔离与正确性<a hidden class="anchor" aria-hidden="true" href="#p0-1-实时订阅的消息隔离与正确性">#</a></h3>
+<p><strong>症状</strong>：多个订阅者同时订阅时会串流/抢消息；订阅 A 可能收到订阅 B 的 tick；或漏推。</p>
+<p><strong>位置</strong>：</p>
+<ul>
+<li><code>qmt_gateway/services/data_service.py</code>（<code>SubscribeQuote</code> 直接消费一个全局流并 yield）</li>
+<li><code>qmt_gateway/bridge/xtdata_bridge.py</code>（单个 <code>_tick_queue</code> + <code>tick_stream()</code>）</li>
+</ul>
+<p><strong>修复方向</strong>：把 tick 分发改成 fan-out/pub-sub（每个订阅者独立队列），并按 <code>request.symbols</code> 做过滤。</p>
+<h3 id="p0-2-asyncioqueue-跨线程使用线程安全问题">P0-2: <code>asyncio.Queue</code> 跨线程使用（线程安全问题）<a hidden class="anchor" aria-hidden="true" href="#p0-2-asyncioqueue-跨线程使用线程安全问题">#</a></h3>
+<p><strong>症状</strong>：tick 回调可能在 xtdata 线程里触发，但 <code>asyncio.Queue.put_nowait()</code> 不是线程安全；会出现随机异常、丢消息、甚至卡死。</p>
+<p><strong>位置</strong>：<code>qmt_gateway/bridge/xtdata_bridge.py</code>（<code>on_data()</code> -&gt; <code>_tick_queue.put_nowait()</code>）</p>
+<p><strong>修复方向</strong>：使用线程安全桥接（例如 <code>queue.Queue</code> + <code>asyncio.to_thread</code>/executor），或在 aio loop 上用 <code>loop.call_soon_threadsafe(...)</code> 入队。</p>
+<blockquote>
+<p>★ Insight ─────────────────────────────────────
+<strong>asyncio.Queue 本身不是线程安全的</strong>。
+当 xtdata 的 C 线程回调触发 Python 的 <code>on_data()</code> 时，
+直接在那个线程调用 <code>asyncio.Queue.put_nowait()</code> 是危险的。
+需要用 <code>loop.call_soon_threadsafe()</code> 将数据送入 asyncio 的事件循环。
+──────────────────────────────────────────────────</p>
+</blockquote>
+<h3 id="p0-3-xtdata-订阅回调未显式绑定">P0-3: xtdata 订阅回调未显式绑定<a hidden class="anchor" aria-hidden="true" href="#p0-3-xtdata-订阅回调未显式绑定">#</a></h3>
+<p><strong>症状</strong>：<code>subscribe_quote()</code> 之后 <code>tick_stream()</code> 永远没有数据。</p>
+<p><strong>位置</strong>：<code>qmt_gateway/bridge/xtdata_bridge.py</code>（定义了 <code>on_data</code>，但没有看到把它注册给 xtdata）</p>
+<p><strong>修复方向</strong>：确认 xtdata API 的订阅签名，显式传入/注册回调。</p>
+<h3 id="p0-4-grpc-混用-grpcaio--asynciorun">P0-4: gRPC 混用 <code>grpc.aio</code> + <code>asyncio.run</code><a hidden class="anchor" aria-hidden="true" href="#p0-4-grpc-混用-grpcaio--asynciorun">#</a></h3>
+<p><strong>症状</strong>：并发、已有 event loop、长时间运行时表现不稳定。</p>
+<p><strong>位置</strong>：<code>qdata/qdata/adapters/qmt_remote_adapter.py</code></p>
+<p><strong>修复方向</strong>：改为同步 <code>grpc.insecure_channel</code>；或将 aio 调用统一放到后台 loop/thread。</p>
+<h3 id="p0-5-交易服务初始化参数丢失">P0-5: 交易服务初始化参数丢失<a hidden class="anchor" aria-hidden="true" href="#p0-5-交易服务初始化参数丢失">#</a></h3>
+<p><strong>症状</strong>：JSON-RPC 8080 常年起不来/或者 executor 行为不符合 account 配置。</p>
+<p><strong>位置</strong>：<code>qmt_gateway/bridge/xttrader_bridge.py</code>（<code>create_qmt_executor</code> 传入了参数但 <code>QMTExecutor(**kwargs)</code> 没吃到）</p>
+<hr>
+<h2 id="p1-should-fix-soon">P1: Should Fix Soon<a hidden class="anchor" aria-hidden="true" href="#p1-should-fix-soon">#</a></h2>
+<p>这些问题<strong>不一定立即炸，但会严重影响&quot;稳定批跑/定位问题/快速恢复&quot;</strong>。</p>
+<h3 id="p1-1-tick-队列无界潜在-oom">P1-1: tick 队列无界（潜在 OOM）<a hidden class="anchor" aria-hidden="true" href="#p1-1-tick-队列无界潜在-oom">#</a></h3>
+<p><strong>症状</strong>：行情高频时内存持续上涨。</p>
+<p><strong>位置</strong>：<code>xtdata_bridge.py</code>（<code>self._tick_queue: asyncio.Queue = asyncio.Queue()</code>）</p>
+<p><strong>修复方向</strong>：给队列设 <code>maxsize</code>，并实现明确的丢弃策略。</p>
+<h3 id="p1-2-订阅引用计数缺少并发保护">P1-2: 订阅引用计数缺少并发保护<a hidden class="anchor" aria-hidden="true" href="#p1-2-订阅引用计数缺少并发保护">#</a></h3>
+<p><strong>症状</strong>：并发订阅/取消订阅时，引用计数可能被写坏。</p>
+<p><strong>位置</strong>：<code>xtdata_bridge.py</code>（<code>_sub_ref_count</code> 的增减没有 lock）</p>
+<h3 id="p1-3-grpc-请求超时与取消处理不完整">P1-3: gRPC 请求超时与取消处理不完整<a hidden class="anchor" aria-hidden="true" href="#p1-3-grpc-请求超时与取消处理不完整">#</a></h3>
+<p><strong>症状</strong>：客户端/服务端遇到网络抖动会挂很久；取消订阅后服务端协程可能仍阻塞。</p>
+<p><strong>修复方向</strong>：统一 timeout、重试（指数退避）、可区分的错误码。</p>
+<h3 id="p1-4-时间戳时区语义需要统一">P1-4: 时间戳/时区语义需要统一<a hidden class="anchor" aria-hidden="true" href="#p1-4-时间戳时区语义需要统一">#</a></h3>
+<p><strong>症状</strong>：bar 的 <code>time</code> 既可能来自 YYYYMMDD 也可能来自毫秒时间戳；客户端又把它当 UTC epoch。</p>
+<p><strong>修复方向</strong>：协议明确 <code>time</code> 的时区与含义（推荐 epoch_ms）。</p>
+<hr>
+<h2 id="p2-nice-to-have">P2: Nice To Have<a hidden class="anchor" aria-hidden="true" href="#p2-nice-to-have">#</a></h2>
+<p>这些是<strong>工程化加分项</strong>，对长期运营和扩展很关键。</p>
+<h3 id="p2-1-鉴权与访问控制">P2-1: 鉴权与访问控制<a hidden class="anchor" aria-hidden="true" href="#p2-1-鉴权与访问控制">#</a></h3>
+<p><strong>现状</strong>：<code>insecure_channel</code>，局域网内任何人可访问数据/交易接口。</p>
+<p><strong>方向</strong>：在 gRPC metadata 加 token；或 mTLS。</p>
+<h3 id="p2-2-指标与追踪">P2-2: 指标与追踪<a hidden class="anchor" aria-hidden="true" href="#p2-2-指标与追踪">#</a></h3>
+<p><strong>方向</strong>：请求计数/耗时/错误码/订阅数/队列长度/丢包数。</p>
+<hr>
+<h2 id="validation-checklist">Validation Checklist<a hidden class="anchor" aria-hidden="true" href="#validation-checklist">#</a></h2>
+<ul>
+<li><input disabled="" type="checkbox"> 单订阅者实时行情：订阅后 5 秒内收到 tick</li>
+<li><input disabled="" type="checkbox"> 双订阅者隔离：A/B 订阅不同 symbol，互不串流</li>
+<li><input disabled="" type="checkbox"> 并发压测：N=10 并发 <code>GetMarketData</code> 不崩、不死锁</li>
+<li><input disabled="" type="checkbox"> 异常注入：网关断网/xtdata 崩/下载失败时快速降级</li>
+</ul>
+<hr>
+<p><em>Generated from: docs/GATEWAY_ROBUSTNESS_FIXLIST.md</em></p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.ganyiming.top/">Enjoy your life! Let&#39;s Claude!</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

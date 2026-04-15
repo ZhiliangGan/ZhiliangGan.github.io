@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Enjoy your life! Let&#39;s Claude!</title>
+<meta name="keywords" content="">
+<meta name="description" content="DevLog #008: QMT Monorepo 统一演进蓝图 — 四段式架构合体
+日期: 2026-04-05
+状态: 规划中
+Tags: architecture, monorepo, system-unification
+
+背景
+涉及核心项目：ATMS、QMT (qmt_system)、Wavemonitor、tradingagents-cn
+核心战略：依托小步快跑迭代，正式开启多项目 Monorepo 合体进程
+
+原产物核心定位
+ATMS: 战术监控与AI宏观决策
+历史定位: 定时巡检、多维共振监控、结合大语言模型盘中辅助决策的独立系统。
+技术沉淀:
+
+高频巡检调度: main.py 定时机制与健壮的自我降级防护
+AI 赋能辩论 (debate/): 利用实时技术信号与持仓成本数据灌入 Prompt、限定 2 轮带记忆裁决的无幻觉 LLM Agent 应用机制
+消息枢纽: 基于 OpenClaw 的飞书自动化卡片推送链路
+
+WaveMonitor: 极速算子基座
+历史定位: 探索大批量实时股票状态机计算的最优解。
+技术沉淀:
+
+vector_engine.py (V7.1 Titan): 抛弃逐条 K 线的 if-else 判断，完全依靠 Pandas 执行纯向量化并行运算
+内置双确认红绿波、状态粘性 FFill、超级防守趋势与动态吊灯止损
+是所有旧版运算库（如 TA-Lib）的绝对上位替代
+
+QMT System: 交易执行与底层基建
+历史定位: 打通真实市场交易与跨平台研发（Mac vs Windows）隔离的底座环境。">
+<meta name="author" content="James Gan">
+<link rel="canonical" href="https://www.ganyiming.top/qmt/2026-04-05-monorepo-unification-plan/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.47e51c7d8489b002361bac156ce9a0a8776d08c5462c2cee95801efafdd90d35.css" integrity="sha256-R&#43;UcfYSJsAI2G6wVbOmgqHdtCMVGLCzulYAe&#43;v3ZDTU=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.ganyiming.top/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.ganyiming.top/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.ganyiming.top/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.ganyiming.top/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.ganyiming.top/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.ganyiming.top/qmt/2026-04-05-monorepo-unification-plan/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://www.ganyiming.top/qmt/2026-04-05-monorepo-unification-plan/">
+  <meta property="og:site_name" content="Enjoy your life! Let&#39;s Claude!">
+  <meta property="og:title" content="Enjoy your life! Let&#39;s Claude!">
+  <meta property="og:description" content="DevLog #008: QMT Monorepo 统一演进蓝图 — 四段式架构合体 日期: 2026-04-05 状态: 规划中 Tags: architecture, monorepo, system-unification
+背景 涉及核心项目：ATMS、QMT (qmt_system)、Wavemonitor、tradingagents-cn
+核心战略：依托小步快跑迭代，正式开启多项目 Monorepo 合体进程
+原产物核心定位 ATMS: 战术监控与AI宏观决策 历史定位: 定时巡检、多维共振监控、结合大语言模型盘中辅助决策的独立系统。
+技术沉淀:
+高频巡检调度: main.py 定时机制与健壮的自我降级防护 AI 赋能辩论 (debate/): 利用实时技术信号与持仓成本数据灌入 Prompt、限定 2 轮带记忆裁决的无幻觉 LLM Agent 应用机制 消息枢纽: 基于 OpenClaw 的飞书自动化卡片推送链路 WaveMonitor: 极速算子基座 历史定位: 探索大批量实时股票状态机计算的最优解。
+技术沉淀:
+vector_engine.py (V7.1 Titan): 抛弃逐条 K 线的 if-else 判断，完全依靠 Pandas 执行纯向量化并行运算 内置双确认红绿波、状态粘性 FFill、超级防守趋势与动态吊灯止损 是所有旧版运算库（如 TA-Lib）的绝对上位替代 QMT System: 交易执行与底层基建 历史定位: 打通真实市场交易与跨平台研发（Mac vs Windows）隔离的底座环境。">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="qmt">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Enjoy your life! Let&#39;s Claude!">
+  <meta name="twitter:description" content="DevLog #008: QMT Monorepo 统一演进蓝图 — 四段式架构合体 日期: 2026-04-05 状态: 规划中 Tags: architecture, monorepo, system-unification
+背景 涉及核心项目：ATMS、QMT (qmt_system)、Wavemonitor、tradingagents-cn
+核心战略：依托小步快跑迭代，正式开启多项目 Monorepo 合体进程
+原产物核心定位 ATMS: 战术监控与AI宏观决策 历史定位: 定时巡检、多维共振监控、结合大语言模型盘中辅助决策的独立系统。
+技术沉淀:
+高频巡检调度: main.py 定时机制与健壮的自我降级防护 AI 赋能辩论 (debate/): 利用实时技术信号与持仓成本数据灌入 Prompt、限定 2 轮带记忆裁决的无幻觉 LLM Agent 应用机制 消息枢纽: 基于 OpenClaw 的飞书自动化卡片推送链路 WaveMonitor: 极速算子基座 历史定位: 探索大批量实时股票状态机计算的最优解。
+技术沉淀:
+vector_engine.py (V7.1 Titan): 抛弃逐条 K 线的 if-else 判断，完全依靠 Pandas 执行纯向量化并行运算 内置双确认红绿波、状态粘性 FFill、超级防守趋势与动态吊灯止损 是所有旧版运算库（如 TA-Lib）的绝对上位替代 QMT System: 交易执行与底层基建 历史定位: 打通真实市场交易与跨平台研发（Mac vs Windows）隔离的底座环境。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Qmts",
+      "item": "https://www.ganyiming.top/qmt/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "",
+      "item": "https://www.ganyiming.top/qmt/2026-04-05-monorepo-unification-plan/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "",
+  "name": "",
+  "description": "DevLog #008: QMT Monorepo 统一演进蓝图 — 四段式架构合体 日期: 2026-04-05 状态: 规划中 Tags: architecture, monorepo, system-unification\n背景 涉及核心项目：ATMS、QMT (qmt_system)、Wavemonitor、tradingagents-cn\n核心战略：依托小步快跑迭代，正式开启多项目 Monorepo 合体进程\n原产物核心定位 ATMS: 战术监控与AI宏观决策 历史定位: 定时巡检、多维共振监控、结合大语言模型盘中辅助决策的独立系统。\n技术沉淀:\n高频巡检调度: main.py 定时机制与健壮的自我降级防护 AI 赋能辩论 (debate/): 利用实时技术信号与持仓成本数据灌入 Prompt、限定 2 轮带记忆裁决的无幻觉 LLM Agent 应用机制 消息枢纽: 基于 OpenClaw 的飞书自动化卡片推送链路 WaveMonitor: 极速算子基座 历史定位: 探索大批量实时股票状态机计算的最优解。\n技术沉淀:\nvector_engine.py (V7.1 Titan): 抛弃逐条 K 线的 if-else 判断，完全依靠 Pandas 执行纯向量化并行运算 内置双确认红绿波、状态粘性 FFill、超级防守趋势与动态吊灯止损 是所有旧版运算库（如 TA-Lib）的绝对上位替代 QMT System: 交易执行与底层基建 历史定位: 打通真实市场交易与跨平台研发（Mac vs Windows）隔离的底座环境。\n",
+  "keywords": [
+    
+  ],
+  "articleBody": "DevLog #008: QMT Monorepo 统一演进蓝图 — 四段式架构合体 日期: 2026-04-05 状态: 规划中 Tags: architecture, monorepo, system-unification\n背景 涉及核心项目：ATMS、QMT (qmt_system)、Wavemonitor、tradingagents-cn\n核心战略：依托小步快跑迭代，正式开启多项目 Monorepo 合体进程\n原产物核心定位 ATMS: 战术监控与AI宏观决策 历史定位: 定时巡检、多维共振监控、结合大语言模型盘中辅助决策的独立系统。\n技术沉淀:\n高频巡检调度: main.py 定时机制与健壮的自我降级防护 AI 赋能辩论 (debate/): 利用实时技术信号与持仓成本数据灌入 Prompt、限定 2 轮带记忆裁决的无幻觉 LLM Agent 应用机制 消息枢纽: 基于 OpenClaw 的飞书自动化卡片推送链路 WaveMonitor: 极速算子基座 历史定位: 探索大批量实时股票状态机计算的最优解。\n技术沉淀:\nvector_engine.py (V7.1 Titan): 抛弃逐条 K 线的 if-else 判断，完全依靠 Pandas 执行纯向量化并行运算 内置双确认红绿波、状态粘性 FFill、超级防守趋势与动态吊灯止损 是所有旧版运算库（如 TA-Lib）的绝对上位替代 QMT System: 交易执行与底层基建 历史定位: 打通真实市场交易与跨平台研发（Mac vs Windows）隔离的底座环境。\n技术沉淀:\n多端执行抽象: 基于 ExecutorBase 包含实盘 QMT 和基于滑点延迟可配置的模拟执行器 多源数据网关: 优雅抹平 xtdata / akshare / csv 获取方式异构差异的数据提取中间件 当前演变断层与技术债务 算法游离重叠 (Strategy Drift Risk): ATMS 中依赖的 core/indicators.py 与 WaveMonitor 依靠的 vector_engine 造成双轨并发运行 抓取阻塞死锁 (Network IO Block): 多系统中的 fetcher 常依赖线程池并发调用 SDK 同步爬取，高频标的时容易全局服务挂起超时 AI智能体缺乏分工碰撞: 当前辩论核心缺少维度视角的盲区互补分离 四段式统一重构路径 ┌─────────────────────────────────────────────────────────────┐ │ │ │ Phase 1: 核心计算基座大一统 (Engine Unification) │ │ Phase 2: 高频常驻数据守护进程重置 (Data Daemon) │ │ Phase 3: AI特工维度的空间切分与投研自进化 (Multi-Agent) │ │ Phase 4: gRPC跨端跨环境交易中继站 (Execution Relay) │ │ │ └─────────────────────────────────────────────────────────────┘ Phase 1: 核心计算基座大一统 目标: 将全系统的脑部判定计算中枢切换至唯一的 V7.1 Titan\n行动:\n淘汰 ATMS 老旧的基于遍历的探测架构 将 Wavemonitor 置为跨系统库提供底座支撑算令 ATMS 降级转变为业务网关和通知引擎调度外壳 Phase 2: 高频常驻数据守护进程重置 目标: 打碎数据爬取和信号计算耦合\n行动:\n在 stock-qdata 中引入深度基于 asyncio 的爬虫守护进程 爬取一轮立即更新至内存高速缓存 运算引擎端从此脱离请求耗时，变更为无痛零开销并发拉取检测 打通万级标的高频算力承载 Phase 3: AI特工维度的空间切分与投研自进化 目标: 引入先进 Agent 编排\n行动:\n博弈重划: 由\"看多与看空\"的立场冲突对抗，变维至基于\"技术盘面/资金量能/宏观研报新闻\"的视角分工辩论 开启自进化: 创建 auto_researcher 训练剧本，利用闭市和节假日收集模拟/真实盘历史信号损失，让 AI 通过重跑回测主动改写设定 YAML 配置 Phase 4: gRPC跨端跨环境交易中继站 目标: 将 Mac 上的投研中心与必须要运行在 Windows 的 QMT 执行中心最终架桥\n行动:\n策略计算侧仅需发布包含授权秘钥的微小信令封包至下端 隔离物理环境风险并保障底层稳定 ★ Insight ───────────────────────────────────── Monorepo 合体的意义不只是\"代码放在一起\"。 真正的价值在于消除重复技术栈、建立统一抽象、 让不同模块之间的数据流和依赖关系变得透明可追踪。 ──────────────────────────────────────────────────\n系统全貌与依赖关系 数据源 (qdata) ──→ 选股池 (ITS) ──→ 执行监控 (QSS) ↑ ↑ ↑ 异步并发 Harness 隔离 吊灯止损 多源竞速 盲区辩论引擎 三维共振策略 Generated from: docs/ARCHITECTURE_ASSESSMENT_AND_UNIFICATION_PLAN.md\n",
+  "wordCount" : "235",
+  "inLanguage": "en",
+  "datePublished": "0001-01-01T00:00:00Z",
+  "dateModified": "0001-01-01T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "James Gan"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.ganyiming.top/qmt/2026-04-05-monorepo-unification-plan/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Enjoy your life! Let's Claude!",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.ganyiming.top/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.ganyiming.top/" accesskey="h" title="Enjoy your life! Let&#39;s Claude! (Alt + H)">Enjoy your life! Let&#39;s Claude!</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="https://www.ganyiming.top/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      
+    </h1>
+    <div class="post-meta"><span>James Gan</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="devlog-008-qmt-monorepo-统一演进蓝图--四段式架构合体">DevLog #008: QMT Monorepo 统一演进蓝图 — 四段式架构合体<a hidden class="anchor" aria-hidden="true" href="#devlog-008-qmt-monorepo-统一演进蓝图--四段式架构合体">#</a></h1>
+<p><strong>日期</strong>: 2026-04-05
+<strong>状态</strong>: 规划中
+<strong>Tags</strong>: architecture, monorepo, system-unification</p>
+<hr>
+<h2 id="背景">背景<a hidden class="anchor" aria-hidden="true" href="#背景">#</a></h2>
+<p>涉及核心项目：ATMS、QMT (qmt_system)、Wavemonitor、tradingagents-cn</p>
+<p>核心战略：依托小步快跑迭代，正式开启多项目 <strong>Monorepo 合体进程</strong></p>
+<hr>
+<h2 id="原产物核心定位">原产物核心定位<a hidden class="anchor" aria-hidden="true" href="#原产物核心定位">#</a></h2>
+<h3 id="atms-战术监控与ai宏观决策">ATMS: 战术监控与AI宏观决策<a hidden class="anchor" aria-hidden="true" href="#atms-战术监控与ai宏观决策">#</a></h3>
+<p><strong>历史定位</strong>: 定时巡检、多维共振监控、结合大语言模型盘中辅助决策的独立系统。</p>
+<p><strong>技术沉淀</strong>:</p>
+<ul>
+<li><strong>高频巡检调度</strong>: <code>main.py</code> 定时机制与健壮的自我降级防护</li>
+<li><strong>AI 赋能辩论 (<code>debate/</code>)</strong>: 利用实时技术信号与持仓成本数据灌入 Prompt、限定 2 轮带记忆裁决的无幻觉 LLM Agent 应用机制</li>
+<li><strong>消息枢纽</strong>: 基于 OpenClaw 的飞书自动化卡片推送链路</li>
+</ul>
+<h3 id="wavemonitor-极速算子基座">WaveMonitor: 极速算子基座<a hidden class="anchor" aria-hidden="true" href="#wavemonitor-极速算子基座">#</a></h3>
+<p><strong>历史定位</strong>: 探索大批量实时股票状态机计算的最优解。</p>
+<p><strong>技术沉淀</strong>:</p>
+<ul>
+<li><strong><code>vector_engine.py</code> (V7.1 Titan)</strong>: 抛弃逐条 K 线的 if-else 判断，完全依靠 Pandas 执行纯向量化并行运算</li>
+<li>内置双确认红绿波、状态粘性 FFill、超级防守趋势与动态吊灯止损</li>
+<li>是所有旧版运算库（如 TA-Lib）的<strong>绝对上位替代</strong></li>
+</ul>
+<h3 id="qmt-system-交易执行与底层基建">QMT System: 交易执行与底层基建<a hidden class="anchor" aria-hidden="true" href="#qmt-system-交易执行与底层基建">#</a></h3>
+<p><strong>历史定位</strong>: 打通真实市场交易与跨平台研发（Mac vs Windows）隔离的底座环境。</p>
+<p><strong>技术沉淀</strong>:</p>
+<ul>
+<li><strong>多端执行抽象</strong>: 基于 <code>ExecutorBase</code> 包含实盘 QMT 和基于滑点延迟可配置的模拟执行器</li>
+<li><strong>多源数据网关</strong>: 优雅抹平 <code>xtdata</code> / <code>akshare</code> / <code>csv</code> 获取方式异构差异的数据提取中间件</li>
+</ul>
+<hr>
+<h2 id="当前演变断层与技术债务">当前演变断层与技术债务<a hidden class="anchor" aria-hidden="true" href="#当前演变断层与技术债务">#</a></h2>
+<ol>
+<li><strong>算法游离重叠 (Strategy Drift Risk)</strong>: ATMS 中依赖的 <code>core/indicators.py</code> 与 WaveMonitor 依靠的 <code>vector_engine</code> 造成双轨并发运行</li>
+<li><strong>抓取阻塞死锁 (Network IO Block)</strong>: 多系统中的 <code>fetcher</code> 常依赖线程池并发调用 SDK 同步爬取，高频标的时容易全局服务挂起超时</li>
+<li><strong>AI智能体缺乏分工碰撞</strong>: 当前辩论核心缺少维度视角的盲区互补分离</li>
+</ol>
+<hr>
+<h2 id="四段式统一重构路径">四段式统一重构路径<a hidden class="anchor" aria-hidden="true" href="#四段式统一重构路径">#</a></h2>
+<pre tabindex="0"><code>┌─────────────────────────────────────────────────────────────┐
+│                                                             │
+│   Phase 1: 核心计算基座大一统 (Engine Unification)           │
+│   Phase 2: 高频常驻数据守护进程重置 (Data Daemon)           │
+│   Phase 3: AI特工维度的空间切分与投研自进化 (Multi-Agent)    │
+│   Phase 4: gRPC跨端跨环境交易中继站 (Execution Relay)        │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+</code></pre><h3 id="phase-1-核心计算基座大一统">Phase 1: 核心计算基座大一统<a hidden class="anchor" aria-hidden="true" href="#phase-1-核心计算基座大一统">#</a></h3>
+<p><strong>目标</strong>: 将全系统的脑部判定计算中枢切换至唯一的 <code>V7.1 Titan</code></p>
+<p><strong>行动</strong>:</p>
+<ul>
+<li>淘汰 ATMS 老旧的基于遍历的探测架构</li>
+<li>将 <code>Wavemonitor</code> 置为跨系统库提供底座支撑算令</li>
+<li>ATMS 降级转变为业务网关和通知引擎调度外壳</li>
+</ul>
+<h3 id="phase-2-高频常驻数据守护进程重置">Phase 2: 高频常驻数据守护进程重置<a hidden class="anchor" aria-hidden="true" href="#phase-2-高频常驻数据守护进程重置">#</a></h3>
+<p><strong>目标</strong>: 打碎数据爬取和信号计算耦合</p>
+<p><strong>行动</strong>:</p>
+<ul>
+<li>在 <code>stock-qdata</code> 中引入深度基于 <code>asyncio</code> 的爬虫守护进程</li>
+<li>爬取一轮立即更新至内存高速缓存</li>
+<li>运算引擎端从此脱离请求耗时，变更为无痛零开销并发拉取检测</li>
+<li>打通万级标的高频算力承载</li>
+</ul>
+<h3 id="phase-3-ai特工维度的空间切分与投研自进化">Phase 3: AI特工维度的空间切分与投研自进化<a hidden class="anchor" aria-hidden="true" href="#phase-3-ai特工维度的空间切分与投研自进化">#</a></h3>
+<p><strong>目标</strong>: 引入先进 Agent 编排</p>
+<p><strong>行动</strong>:</p>
+<ul>
+<li><strong>博弈重划</strong>: 由&quot;看多与看空&quot;的立场冲突对抗，变维至基于&quot;技术盘面/资金量能/宏观研报新闻&quot;的视角分工辩论</li>
+<li><strong>开启自进化</strong>: 创建 <code>auto_researcher</code> 训练剧本，利用闭市和节假日收集模拟/真实盘历史信号损失，让 AI 通过重跑回测主动改写设定 YAML 配置</li>
+</ul>
+<h3 id="phase-4-grpc跨端跨环境交易中继站">Phase 4: gRPC跨端跨环境交易中继站<a hidden class="anchor" aria-hidden="true" href="#phase-4-grpc跨端跨环境交易中继站">#</a></h3>
+<p><strong>目标</strong>: 将 Mac 上的投研中心与必须要运行在 Windows 的 QMT 执行中心最终架桥</p>
+<p><strong>行动</strong>:</p>
+<ul>
+<li>策略计算侧仅需发布包含授权秘钥的微小信令封包至下端</li>
+<li>隔离物理环境风险并保障底层稳定</li>
+</ul>
+<blockquote>
+<p>★ Insight ─────────────────────────────────────
+<strong>Monorepo 合体的意义不只是&quot;代码放在一起&quot;</strong>。
+真正的价值在于消除重复技术栈、建立统一抽象、
+让不同模块之间的数据流和依赖关系变得透明可追踪。
+──────────────────────────────────────────────────</p>
+</blockquote>
+<hr>
+<h2 id="系统全貌与依赖关系">系统全貌与依赖关系<a hidden class="anchor" aria-hidden="true" href="#系统全貌与依赖关系">#</a></h2>
+<pre tabindex="0"><code>数据源 (qdata) ──→ 选股池 (ITS) ──→ 执行监控 (QSS)
+     ↑                  ↑                  ↑
+  异步并发         Harness 隔离        吊灯止损
+  多源竞速         盲区辩论引擎        三维共振策略
+</code></pre><hr>
+<p><em>Generated from: docs/ARCHITECTURE_ASSESSMENT_AND_UNIFICATION_PLAN.md</em></p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.ganyiming.top/">Enjoy your life! Let&#39;s Claude!</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

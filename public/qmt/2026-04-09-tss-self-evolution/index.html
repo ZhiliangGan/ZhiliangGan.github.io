@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Enjoy your life! Let&#39;s Claude!</title>
+<meta name="keywords" content="">
+<meta name="description" content="DevLog #002: TSS 策略自进化 — &ldquo;正在测&rdquo; 机制深度讨论
+日期: 2026-04-09
+状态: 讨论稿
+Tags: tss, strategy-evolution, 正在测, 评价体系
+
+核心问题
+TSS 是否具备&quot;自我迭代能力&quot;？如果可以，应该如何设计？
+
+讨论结论
+TSS 可以具备一种有限但很有价值的&quot;自我迭代能力&quot;，但它不是&quot;自己变聪明&quot;，而是：
+
+每天持续生成候选策略或候选变体
+用最新行情做&quot;正在测&quot;的在线观察
+把观察结果写入记忆
+定期根据记忆淘汰、降权、晋升、重组策略
+
+
+★ Insight ─────────────────────────────────────
+&ldquo;正在测&quot;不是回测替代品，而是回测之后的下一层。
+回测回答&quot;如果过去这样做，结果会怎样&rdquo;
+&ldquo;正在测&quot;回答&quot;如果从今天开始持续跟踪，这个策略在当前市场状态下是不是还活着&rdquo;
+──────────────────────────────────────────────────
+
+
+&ldquo;正在测&rdquo; 的本质
+它更像：
+
+影子组合
+模拟联赛
+在线观察期
+
+策略生命周期：
+
+历史回测：先证明它过去不是纯噪声
+滚动验证：再看它在不同年份和市场阶段是否稳定
+正在测：让它用最新市场数据持续接受现实检验
+晋升或淘汰：根据在线表现决定是否进入正式策略池
+
+
+策略池四层设计
+┌─────────────────────────────────────────────────────────────┐
+│  候选池                                                          │
+│  - 只做离线回测与稳健性筛选                                         │
+├─────────────────────────────────────────────────────────────┤
+│  观察池（正在测）                                                  │
+│  - 每天跟随最新行情更新表现                                           │
+│  - 不直接决定正式组合                                               │
+│  - 重点观察是否延续历史优势                                          │
+├─────────────────────────────────────────────────────────────┤
+│  生产池                                                            │
+│  - 已通过历史和在线双重验证                                           │
+│  - 可作为正式优选策略候选                                            │
+├─────────────────────────────────────────────────────────────┤
+│  冻结池                                                            │
+│  - 曾经有效但近期失效                                               │
+│  - 暂不删除，保留历史记忆                                            │
+│  - 等待未来市场状态重新匹配                                           │
+└─────────────────────────────────────────────────────────────┘
+
+★ Insight ─────────────────────────────────────
+大多数策略不是&quot;永远死&quot;，而是&quot;阶段失效&quot;。
+冻结池的设计让系统保留了&quot;等待市场状态重新匹配&quot;的可能性。
+──────────────────────────────────────────────────">
+<meta name="author" content="James Gan">
+<link rel="canonical" href="https://www.ganyiming.top/qmt/2026-04-09-tss-self-evolution/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.47e51c7d8489b002361bac156ce9a0a8776d08c5462c2cee95801efafdd90d35.css" integrity="sha256-R&#43;UcfYSJsAI2G6wVbOmgqHdtCMVGLCzulYAe&#43;v3ZDTU=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.ganyiming.top/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.ganyiming.top/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.ganyiming.top/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.ganyiming.top/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.ganyiming.top/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.ganyiming.top/qmt/2026-04-09-tss-self-evolution/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://www.ganyiming.top/qmt/2026-04-09-tss-self-evolution/">
+  <meta property="og:site_name" content="Enjoy your life! Let&#39;s Claude!">
+  <meta property="og:title" content="Enjoy your life! Let&#39;s Claude!">
+  <meta property="og:description" content="DevLog #002: TSS 策略自进化 — “正在测” 机制深度讨论 日期: 2026-04-09 状态: 讨论稿 Tags: tss, strategy-evolution, 正在测, 评价体系
+核心问题 TSS 是否具备&#34;自我迭代能力&#34;？如果可以，应该如何设计？
+讨论结论 TSS 可以具备一种有限但很有价值的&#34;自我迭代能力&#34;，但它不是&#34;自己变聪明&#34;，而是：
+每天持续生成候选策略或候选变体 用最新行情做&#34;正在测&#34;的在线观察 把观察结果写入记忆 定期根据记忆淘汰、降权、晋升、重组策略 ★ Insight ───────────────────────────────────── “正在测&#34;不是回测替代品，而是回测之后的下一层。 回测回答&#34;如果过去这样做，结果会怎样” “正在测&#34;回答&#34;如果从今天开始持续跟踪，这个策略在当前市场状态下是不是还活着” ──────────────────────────────────────────────────
+“正在测” 的本质 它更像：
+影子组合 模拟联赛 在线观察期 策略生命周期：
+历史回测：先证明它过去不是纯噪声 滚动验证：再看它在不同年份和市场阶段是否稳定 正在测：让它用最新市场数据持续接受现实检验 晋升或淘汰：根据在线表现决定是否进入正式策略池 策略池四层设计 ┌─────────────────────────────────────────────────────────────┐ │ 候选池 │ │ - 只做离线回测与稳健性筛选 │ ├─────────────────────────────────────────────────────────────┤ │ 观察池（正在测） │ │ - 每天跟随最新行情更新表现 │ │ - 不直接决定正式组合 │ │ - 重点观察是否延续历史优势 │ ├─────────────────────────────────────────────────────────────┤ │ 生产池 │ │ - 已通过历史和在线双重验证 │ │ - 可作为正式优选策略候选 │ ├─────────────────────────────────────────────────────────────┤ │ 冻结池 │ │ - 曾经有效但近期失效 │ │ - 暂不删除，保留历史记忆 │ │ - 等待未来市场状态重新匹配 │ └─────────────────────────────────────────────────────────────┘ ★ Insight ───────────────────────────────────── 大多数策略不是&#34;永远死&#34;，而是&#34;阶段失效&#34;。 冻结池的设计让系统保留了&#34;等待市场状态重新匹配&#34;的可能性。 ──────────────────────────────────────────────────">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="qmt">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Enjoy your life! Let&#39;s Claude!">
+  <meta name="twitter:description" content="DevLog #002: TSS 策略自进化 — “正在测” 机制深度讨论 日期: 2026-04-09 状态: 讨论稿 Tags: tss, strategy-evolution, 正在测, 评价体系
+核心问题 TSS 是否具备&#34;自我迭代能力&#34;？如果可以，应该如何设计？
+讨论结论 TSS 可以具备一种有限但很有价值的&#34;自我迭代能力&#34;，但它不是&#34;自己变聪明&#34;，而是：
+每天持续生成候选策略或候选变体 用最新行情做&#34;正在测&#34;的在线观察 把观察结果写入记忆 定期根据记忆淘汰、降权、晋升、重组策略 ★ Insight ───────────────────────────────────── “正在测&#34;不是回测替代品，而是回测之后的下一层。 回测回答&#34;如果过去这样做，结果会怎样” “正在测&#34;回答&#34;如果从今天开始持续跟踪，这个策略在当前市场状态下是不是还活着” ──────────────────────────────────────────────────
+“正在测” 的本质 它更像：
+影子组合 模拟联赛 在线观察期 策略生命周期：
+历史回测：先证明它过去不是纯噪声 滚动验证：再看它在不同年份和市场阶段是否稳定 正在测：让它用最新市场数据持续接受现实检验 晋升或淘汰：根据在线表现决定是否进入正式策略池 策略池四层设计 ┌─────────────────────────────────────────────────────────────┐ │ 候选池 │ │ - 只做离线回测与稳健性筛选 │ ├─────────────────────────────────────────────────────────────┤ │ 观察池（正在测） │ │ - 每天跟随最新行情更新表现 │ │ - 不直接决定正式组合 │ │ - 重点观察是否延续历史优势 │ ├─────────────────────────────────────────────────────────────┤ │ 生产池 │ │ - 已通过历史和在线双重验证 │ │ - 可作为正式优选策略候选 │ ├─────────────────────────────────────────────────────────────┤ │ 冻结池 │ │ - 曾经有效但近期失效 │ │ - 暂不删除，保留历史记忆 │ │ - 等待未来市场状态重新匹配 │ └─────────────────────────────────────────────────────────────┘ ★ Insight ───────────────────────────────────── 大多数策略不是&#34;永远死&#34;，而是&#34;阶段失效&#34;。 冻结池的设计让系统保留了&#34;等待市场状态重新匹配&#34;的可能性。 ──────────────────────────────────────────────────">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Qmts",
+      "item": "https://www.ganyiming.top/qmt/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "",
+      "item": "https://www.ganyiming.top/qmt/2026-04-09-tss-self-evolution/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "",
+  "name": "",
+  "description": "DevLog #002: TSS 策略自进化 — \u0026ldquo;正在测\u0026rdquo; 机制深度讨论 日期: 2026-04-09 状态: 讨论稿 Tags: tss, strategy-evolution, 正在测, 评价体系\n核心问题 TSS 是否具备\u0026quot;自我迭代能力\u0026quot;？如果可以，应该如何设计？\n讨论结论 TSS 可以具备一种有限但很有价值的\u0026quot;自我迭代能力\u0026quot;，但它不是\u0026quot;自己变聪明\u0026quot;，而是：\n每天持续生成候选策略或候选变体 用最新行情做\u0026quot;正在测\u0026quot;的在线观察 把观察结果写入记忆 定期根据记忆淘汰、降权、晋升、重组策略 ★ Insight ───────────────────────────────────── \u0026ldquo;正在测\u0026quot;不是回测替代品，而是回测之后的下一层。 回测回答\u0026quot;如果过去这样做，结果会怎样\u0026rdquo; \u0026ldquo;正在测\u0026quot;回答\u0026quot;如果从今天开始持续跟踪，这个策略在当前市场状态下是不是还活着\u0026rdquo; ──────────────────────────────────────────────────\n\u0026ldquo;正在测\u0026rdquo; 的本质 它更像：\n影子组合 模拟联赛 在线观察期 策略生命周期：\n历史回测：先证明它过去不是纯噪声 滚动验证：再看它在不同年份和市场阶段是否稳定 正在测：让它用最新市场数据持续接受现实检验 晋升或淘汰：根据在线表现决定是否进入正式策略池 策略池四层设计 ┌─────────────────────────────────────────────────────────────┐ │ 候选池 │ │ - 只做离线回测与稳健性筛选 │ ├─────────────────────────────────────────────────────────────┤ │ 观察池（正在测） │ │ - 每天跟随最新行情更新表现 │ │ - 不直接决定正式组合 │ │ - 重点观察是否延续历史优势 │ ├─────────────────────────────────────────────────────────────┤ │ 生产池 │ │ - 已通过历史和在线双重验证 │ │ - 可作为正式优选策略候选 │ ├─────────────────────────────────────────────────────────────┤ │ 冻结池 │ │ - 曾经有效但近期失效 │ │ - 暂不删除，保留历史记忆 │ │ - 等待未来市场状态重新匹配 │ └─────────────────────────────────────────────────────────────┘ ★ Insight ───────────────────────────────────── 大多数策略不是\u0026quot;永远死\u0026quot;，而是\u0026quot;阶段失效\u0026quot;。 冻结池的设计让系统保留了\u0026quot;等待市场状态重新匹配\u0026quot;的可能性。 ──────────────────────────────────────────────────\n",
+  "keywords": [
+    
+  ],
+  "articleBody": "DevLog #002: TSS 策略自进化 — “正在测” 机制深度讨论 日期: 2026-04-09 状态: 讨论稿 Tags: tss, strategy-evolution, 正在测, 评价体系\n核心问题 TSS 是否具备\"自我迭代能力\"？如果可以，应该如何设计？\n讨论结论 TSS 可以具备一种有限但很有价值的\"自我迭代能力\"，但它不是\"自己变聪明\"，而是：\n每天持续生成候选策略或候选变体 用最新行情做\"正在测\"的在线观察 把观察结果写入记忆 定期根据记忆淘汰、降权、晋升、重组策略 ★ Insight ───────────────────────────────────── “正在测\"不是回测替代品，而是回测之后的下一层。 回测回答\"如果过去这样做，结果会怎样” “正在测\"回答\"如果从今天开始持续跟踪，这个策略在当前市场状态下是不是还活着” ──────────────────────────────────────────────────\n“正在测” 的本质 它更像：\n影子组合 模拟联赛 在线观察期 策略生命周期：\n历史回测：先证明它过去不是纯噪声 滚动验证：再看它在不同年份和市场阶段是否稳定 正在测：让它用最新市场数据持续接受现实检验 晋升或淘汰：根据在线表现决定是否进入正式策略池 策略池四层设计 ┌─────────────────────────────────────────────────────────────┐ │ 候选池 │ │ - 只做离线回测与稳健性筛选 │ ├─────────────────────────────────────────────────────────────┤ │ 观察池（正在测） │ │ - 每天跟随最新行情更新表现 │ │ - 不直接决定正式组合 │ │ - 重点观察是否延续历史优势 │ ├─────────────────────────────────────────────────────────────┤ │ 生产池 │ │ - 已通过历史和在线双重验证 │ │ - 可作为正式优选策略候选 │ ├─────────────────────────────────────────────────────────────┤ │ 冻结池 │ │ - 曾经有效但近期失效 │ │ - 暂不删除，保留历史记忆 │ │ - 等待未来市场状态重新匹配 │ └─────────────────────────────────────────────────────────────┘ ★ Insight ───────────────────────────────────── 大多数策略不是\"永远死\"，而是\"阶段失效\"。 冻结池的设计让系统保留了\"等待市场状态重新匹配\"的可能性。 ──────────────────────────────────────────────────\n评价体系的四层结构 第一层：生存门槛（不做排名，只做剔除） 硬过滤条件：\n交易成本后仍为正收益 最大回撤不超过上限 至少有足够交易次数 多个时间切片不是全崩 第二层：核心收益质量 回答\"赚得好不好\"：\n年化收益 最大回撤 收益回撤比 Sharpe Sortino 第三层：稳健性 回答\"是不是侥幸\"：\n分年度收益分布 滚动窗口表现 参数扰动稳定性 不同 market regime 下稳定性 ★ Insight ───────────────────────────────────── 在自动进化系统里，稳健性比收益更重要。 系统最怕选出\"漂亮但不可持续\"的假冠军。 ──────────────────────────────────────────────────\n第四层：可实施性 回答\"能不能真做\"：\n换手率 容量 滑点敏感度 信号拥挤度 推荐评分方式 硬过滤 + 分组评分 + 低相关去重 # 硬过滤 if max_drawdown \u003e 35: 淘汰 if cost_adjusted_return \u003c= 0: 淘汰 # 分组评分 return_score = ... robust_score = ... implement_score = ... total_score = 0.35 * return_score \\ + 0.45 * robust_score \\ + 0.20 * implement_score # 低相关去重 # 最终入选策略要经过： # - 收益相关性聚类 # - 风格聚类 # - 持仓相似度聚类 ★ Insight ───────────────────────────────────── 故意让稳健性权重大于收益（0.45 vs 0.35）。 因为自动化系统最怕选出\"漂亮但不可持续\"的假冠军。 ──────────────────────────────────────────────────\n在线观察指标 “正在测\"不适合只用年化收益评价，因为时间太短。\n建议看这些短周期指标：\n近5日超额收益 近20日超额收益 近20日最大回撤 近20日换手与成本 信号命中率 当前持仓与策略历史风格是否一致 重点不是\"立刻赚钱多少”，而是：是否还符合它过去的统计特征。\n切片设计与场景策略挖掘 某些策略可能只在\"某些股票 + 某些年份 + 某种市场状态\"特别强，如何不被全局均值误杀？\n答案是把评估体系从\"单总分\"升级为双通道：\n通道A：全局稳健策略（Core） 通道B：场景优势策略（Satellite） 切片原则 先粗后细：先用粗粒度找稳定规律，再用细粒度定位优势细节 先时间后状态：先看跨年稳定，再看 regime 适配 先分组后单股：先看股票组，再看单只股票，避免单股偶然性误导 主切片（用于正式评分） 时间切片：按年（2021、2022、2023、2024、2025、2026YTD） 状态切片：趋势 x 波动 二维组合 标的切片：按股票分组 场景策略评分 scenario_score = 0.45 * PeakEdge \\ + 0.35 * Breadth \\ + 0.20 * Consistency PeakEdge：最佳20%切片的超额收益能力 Breadth：有效切片占比 Consistency：相邻切片和时间外验证一致性 避免过拟合的三道刹车 复杂度惩罚：规则越多、参数越多、依赖越重，扣分越多 新旧版本挑战制：新策略必须先进入观察池，连续稳定才能升级 分离训练期、验证期、观察期：不要让同一段数据既负责生成，又负责评分 AI 最适合干什么 适合交给 AI：\n生成策略变体 从记忆中总结有效片段 识别策略失败模式 归纳 market regime 下的适配关系 不适合完全交给 AI：\n直接决定实盘上线 绕过统一评价体系挑选冠军 根据短期表现随意改规则 最小落地路线 阶段A：把现有策略变成可比较对象 统一策略元数据 统一回测输出 统一评分结果 阶段B：建立\"正在测\"池 每天更新观察池表现 写入观察记录 给出降权 / 冻结建议 阶段C：引入记忆 哪类策略最近有效 哪类策略最近失效 哪些结构应减少搜索 阶段D：引入自动变体生成 这时再让 AI 生成候选策略，风险更可控 讨论结论 TSS 真正需要的\"可控的自进化能力\"由以下四个东西构成：\n正在测 机制 多维评价体系 策略记忆系统 策略晋升 / 淘汰机制 这套能力成立的前提不是 AI 更聪明，而是：\n策略表达标准化 评价体系分层化 在线观察持续化 记忆沉淀结构化 晋升淘汰规则明确化 如果没有这些约束，AI 只会更快地产生更多过拟合策略。\nGenerated from: SAF/tss/DISCUSS_STRATEGY_EVOLUTION.md\n",
+  "wordCount" : "317",
+  "inLanguage": "en",
+  "datePublished": "0001-01-01T00:00:00Z",
+  "dateModified": "0001-01-01T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "James Gan"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.ganyiming.top/qmt/2026-04-09-tss-self-evolution/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Enjoy your life! Let's Claude!",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.ganyiming.top/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.ganyiming.top/" accesskey="h" title="Enjoy your life! Let&#39;s Claude! (Alt + H)">Enjoy your life! Let&#39;s Claude!</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="https://www.ganyiming.top/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      
+    </h1>
+    <div class="post-meta"><span>James Gan</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="devlog-002-tss-策略自进化--正在测-机制深度讨论">DevLog #002: TSS 策略自进化 — &ldquo;正在测&rdquo; 机制深度讨论<a hidden class="anchor" aria-hidden="true" href="#devlog-002-tss-策略自进化--正在测-机制深度讨论">#</a></h1>
+<p><strong>日期</strong>: 2026-04-09
+<strong>状态</strong>: 讨论稿
+<strong>Tags</strong>: tss, strategy-evolution, 正在测, 评价体系</p>
+<hr>
+<h2 id="核心问题">核心问题<a hidden class="anchor" aria-hidden="true" href="#核心问题">#</a></h2>
+<p>TSS 是否具备&quot;自我迭代能力&quot;？如果可以，应该如何设计？</p>
+<hr>
+<h2 id="讨论结论">讨论结论<a hidden class="anchor" aria-hidden="true" href="#讨论结论">#</a></h2>
+<p><code>TSS</code> 可以具备一种<strong>有限但很有价值的&quot;自我迭代能力&quot;</strong>，但它不是&quot;自己变聪明&quot;，而是：</p>
+<ul>
+<li>每天持续生成候选策略或候选变体</li>
+<li>用最新行情做&quot;正在测&quot;的在线观察</li>
+<li>把观察结果写入记忆</li>
+<li>定期根据记忆淘汰、降权、晋升、重组策略</li>
+</ul>
+<blockquote>
+<p>★ Insight ─────────────────────────────────────
+<strong>&ldquo;正在测&quot;不是回测替代品</strong>，而是回测之后的下一层。
+回测回答&quot;如果过去这样做，结果会怎样&rdquo;
+&ldquo;正在测&quot;回答&quot;如果从今天开始持续跟踪，这个策略在当前市场状态下是不是还活着&rdquo;
+──────────────────────────────────────────────────</p>
+</blockquote>
+<hr>
+<h2 id="正在测-的本质">&ldquo;正在测&rdquo; 的本质<a hidden class="anchor" aria-hidden="true" href="#正在测-的本质">#</a></h2>
+<p>它更像：</p>
+<ul>
+<li>影子组合</li>
+<li>模拟联赛</li>
+<li>在线观察期</li>
+</ul>
+<p>策略生命周期：</p>
+<ol>
+<li><strong>历史回测</strong>：先证明它过去不是纯噪声</li>
+<li><strong>滚动验证</strong>：再看它在不同年份和市场阶段是否稳定</li>
+<li><strong>正在测</strong>：让它用最新市场数据持续接受现实检验</li>
+<li><strong>晋升或淘汰</strong>：根据在线表现决定是否进入正式策略池</li>
+</ol>
+<hr>
+<h2 id="策略池四层设计">策略池四层设计<a hidden class="anchor" aria-hidden="true" href="#策略池四层设计">#</a></h2>
+<pre tabindex="0"><code>┌─────────────────────────────────────────────────────────────┐
+│  候选池                                                          │
+│  - 只做离线回测与稳健性筛选                                         │
+├─────────────────────────────────────────────────────────────┤
+│  观察池（正在测）                                                  │
+│  - 每天跟随最新行情更新表现                                           │
+│  - 不直接决定正式组合                                               │
+│  - 重点观察是否延续历史优势                                          │
+├─────────────────────────────────────────────────────────────┤
+│  生产池                                                            │
+│  - 已通过历史和在线双重验证                                           │
+│  - 可作为正式优选策略候选                                            │
+├─────────────────────────────────────────────────────────────┤
+│  冻结池                                                            │
+│  - 曾经有效但近期失效                                               │
+│  - 暂不删除，保留历史记忆                                            │
+│  - 等待未来市场状态重新匹配                                           │
+└─────────────────────────────────────────────────────────────┘
+</code></pre><blockquote>
+<p>★ Insight ─────────────────────────────────────
+<strong>大多数策略不是&quot;永远死&quot;，而是&quot;阶段失效&quot;</strong>。
+冻结池的设计让系统保留了&quot;等待市场状态重新匹配&quot;的可能性。
+──────────────────────────────────────────────────</p>
+</blockquote>
+<hr>
+<h2 id="评价体系的四层结构">评价体系的四层结构<a hidden class="anchor" aria-hidden="true" href="#评价体系的四层结构">#</a></h2>
+<h3 id="第一层生存门槛不做排名只做剔除">第一层：生存门槛（不做排名，只做剔除）<a hidden class="anchor" aria-hidden="true" href="#第一层生存门槛不做排名只做剔除">#</a></h3>
+<p>硬过滤条件：</p>
+<ul>
+<li>交易成本后仍为正收益</li>
+<li>最大回撤不超过上限</li>
+<li>至少有足够交易次数</li>
+<li>多个时间切片不是全崩</li>
+</ul>
+<h3 id="第二层核心收益质量">第二层：核心收益质量<a hidden class="anchor" aria-hidden="true" href="#第二层核心收益质量">#</a></h3>
+<p>回答&quot;赚得好不好&quot;：</p>
+<ul>
+<li>年化收益</li>
+<li>最大回撤</li>
+<li>收益回撤比</li>
+<li>Sharpe</li>
+<li>Sortino</li>
+</ul>
+<h3 id="第三层稳健性">第三层：稳健性<a hidden class="anchor" aria-hidden="true" href="#第三层稳健性">#</a></h3>
+<p>回答&quot;是不是侥幸&quot;：</p>
+<ul>
+<li>分年度收益分布</li>
+<li>滚动窗口表现</li>
+<li>参数扰动稳定性</li>
+<li>不同 market regime 下稳定性</li>
+</ul>
+<blockquote>
+<p>★ Insight ─────────────────────────────────────
+<strong>在自动进化系统里，稳健性比收益更重要</strong>。
+系统最怕选出&quot;漂亮但不可持续&quot;的假冠军。
+──────────────────────────────────────────────────</p>
+</blockquote>
+<h3 id="第四层可实施性">第四层：可实施性<a hidden class="anchor" aria-hidden="true" href="#第四层可实施性">#</a></h3>
+<p>回答&quot;能不能真做&quot;：</p>
+<ul>
+<li>换手率</li>
+<li>容量</li>
+<li>滑点敏感度</li>
+<li>信号拥挤度</li>
+</ul>
+<hr>
+<h2 id="推荐评分方式">推荐评分方式<a hidden class="anchor" aria-hidden="true" href="#推荐评分方式">#</a></h2>
+<h3 id="硬过滤--分组评分--低相关去重">硬过滤 + 分组评分 + 低相关去重<a hidden class="anchor" aria-hidden="true" href="#硬过滤--分组评分--低相关去重">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#75715e"># 硬过滤</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> max_drawdown <span style="color:#f92672">&gt;</span> <span style="color:#ae81ff">35</span>: 淘汰
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">if</span> cost_adjusted_return <span style="color:#f92672">&lt;=</span> <span style="color:#ae81ff">0</span>: 淘汰
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 分组评分</span>
+</span></span><span style="display:flex;"><span>return_score    <span style="color:#f92672">=</span> <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>robust_score    <span style="color:#f92672">=</span> <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>implement_score <span style="color:#f92672">=</span> <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>total_score <span style="color:#f92672">=</span> <span style="color:#ae81ff">0.35</span> <span style="color:#f92672">*</span> return_score \
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">+</span> <span style="color:#ae81ff">0.45</span> <span style="color:#f92672">*</span> robust_score \
+</span></span><span style="display:flex;"><span>            <span style="color:#f92672">+</span> <span style="color:#ae81ff">0.20</span> <span style="color:#f92672">*</span> implement_score
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 低相关去重</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 最终入选策略要经过：</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># - 收益相关性聚类</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># - 风格聚类</span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># - 持仓相似度聚类</span>
+</span></span></code></pre></div><blockquote>
+<p>★ Insight ─────────────────────────────────────
+<strong>故意让稳健性权重大于收益（0.45 vs 0.35）</strong>。
+因为自动化系统最怕选出&quot;漂亮但不可持续&quot;的假冠军。
+──────────────────────────────────────────────────</p>
+</blockquote>
+<hr>
+<h2 id="在线观察指标">在线观察指标<a hidden class="anchor" aria-hidden="true" href="#在线观察指标">#</a></h2>
+<p>&ldquo;正在测&quot;不适合只用年化收益评价，因为时间太短。</p>
+<p>建议看这些短周期指标：</p>
+<ul>
+<li>近5日超额收益</li>
+<li>近20日超额收益</li>
+<li>近20日最大回撤</li>
+<li>近20日换手与成本</li>
+<li>信号命中率</li>
+<li>当前持仓与策略历史风格是否一致</li>
+</ul>
+<p>重点不是&quot;立刻赚钱多少&rdquo;，而是：<strong>是否还符合它过去的统计特征</strong>。</p>
+<hr>
+<h2 id="切片设计与场景策略挖掘">切片设计与场景策略挖掘<a hidden class="anchor" aria-hidden="true" href="#切片设计与场景策略挖掘">#</a></h2>
+<p>某些策略可能只在&quot;某些股票 + 某些年份 + 某种市场状态&quot;特别强，如何不被全局均值误杀？</p>
+<p>答案是把评估体系从&quot;单总分&quot;升级为<strong>双通道</strong>：</p>
+<ul>
+<li>通道A：全局稳健策略（Core）</li>
+<li>通道B：场景优势策略（Satellite）</li>
+</ul>
+<h3 id="切片原则">切片原则<a hidden class="anchor" aria-hidden="true" href="#切片原则">#</a></h3>
+<ul>
+<li>先粗后细：先用粗粒度找稳定规律，再用细粒度定位优势细节</li>
+<li>先时间后状态：先看跨年稳定，再看 regime 适配</li>
+<li>先分组后单股：先看股票组，再看单只股票，避免单股偶然性误导</li>
+</ul>
+<h3 id="主切片用于正式评分">主切片（用于正式评分）<a hidden class="anchor" aria-hidden="true" href="#主切片用于正式评分">#</a></h3>
+<ul>
+<li>时间切片：按年（2021、2022、2023、2024、2025、2026YTD）</li>
+<li>状态切片：<code>趋势 x 波动</code> 二维组合</li>
+<li>标的切片：按股票分组</li>
+</ul>
+<h3 id="场景策略评分">场景策略评分<a hidden class="anchor" aria-hidden="true" href="#场景策略评分">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>scenario_score <span style="color:#f92672">=</span> <span style="color:#ae81ff">0.45</span> <span style="color:#f92672">*</span> PeakEdge \
+</span></span><span style="display:flex;"><span>               <span style="color:#f92672">+</span> <span style="color:#ae81ff">0.35</span> <span style="color:#f92672">*</span> Breadth \
+</span></span><span style="display:flex;"><span>               <span style="color:#f92672">+</span> <span style="color:#ae81ff">0.20</span> <span style="color:#f92672">*</span> Consistency
+</span></span></code></pre></div><ul>
+<li><code>PeakEdge</code>：最佳20%切片的超额收益能力</li>
+<li><code>Breadth</code>：有效切片占比</li>
+<li><code>Consistency</code>：相邻切片和时间外验证一致性</li>
+</ul>
+<hr>
+<h2 id="避免过拟合的三道刹车">避免过拟合的三道刹车<a hidden class="anchor" aria-hidden="true" href="#避免过拟合的三道刹车">#</a></h2>
+<ol>
+<li><strong>复杂度惩罚</strong>：规则越多、参数越多、依赖越重，扣分越多</li>
+<li><strong>新旧版本挑战制</strong>：新策略必须先进入观察池，连续稳定才能升级</li>
+<li><strong>分离训练期、验证期、观察期</strong>：不要让同一段数据既负责生成，又负责评分</li>
+</ol>
+<hr>
+<h2 id="ai-最适合干什么">AI 最适合干什么<a hidden class="anchor" aria-hidden="true" href="#ai-最适合干什么">#</a></h2>
+<p><strong>适合交给 AI</strong>：</p>
+<ul>
+<li>生成策略变体</li>
+<li>从记忆中总结有效片段</li>
+<li>识别策略失败模式</li>
+<li>归纳 market regime 下的适配关系</li>
+</ul>
+<p><strong>不适合完全交给 AI</strong>：</p>
+<ul>
+<li>直接决定实盘上线</li>
+<li>绕过统一评价体系挑选冠军</li>
+<li>根据短期表现随意改规则</li>
+</ul>
+<hr>
+<h2 id="最小落地路线">最小落地路线<a hidden class="anchor" aria-hidden="true" href="#最小落地路线">#</a></h2>
+<h3 id="阶段a把现有策略变成可比较对象">阶段A：把现有策略变成可比较对象<a hidden class="anchor" aria-hidden="true" href="#阶段a把现有策略变成可比较对象">#</a></h3>
+<ul>
+<li>统一策略元数据</li>
+<li>统一回测输出</li>
+<li>统一评分结果</li>
+</ul>
+<h3 id="阶段b建立正在测池">阶段B：建立&quot;正在测&quot;池<a hidden class="anchor" aria-hidden="true" href="#阶段b建立正在测池">#</a></h3>
+<ul>
+<li>每天更新观察池表现</li>
+<li>写入观察记录</li>
+<li>给出降权 / 冻结建议</li>
+</ul>
+<h3 id="阶段c引入记忆">阶段C：引入记忆<a hidden class="anchor" aria-hidden="true" href="#阶段c引入记忆">#</a></h3>
+<ul>
+<li>哪类策略最近有效</li>
+<li>哪类策略最近失效</li>
+<li>哪些结构应减少搜索</li>
+</ul>
+<h3 id="阶段d引入自动变体生成">阶段D：引入自动变体生成<a hidden class="anchor" aria-hidden="true" href="#阶段d引入自动变体生成">#</a></h3>
+<ul>
+<li>这时再让 AI 生成候选策略，风险更可控</li>
+</ul>
+<hr>
+<h2 id="讨论结论-1">讨论结论<a hidden class="anchor" aria-hidden="true" href="#讨论结论-1">#</a></h2>
+<p>TSS 真正需要的&quot;可控的自进化能力&quot;由以下四个东西构成：</p>
+<ol>
+<li><code>正在测</code> 机制</li>
+<li>多维评价体系</li>
+<li>策略记忆系统</li>
+<li>策略晋升 / 淘汰机制</li>
+</ol>
+<p><strong>这套能力成立的前提不是 AI 更聪明，而是</strong>：</p>
+<ul>
+<li>策略表达标准化</li>
+<li>评价体系分层化</li>
+<li>在线观察持续化</li>
+<li>记忆沉淀结构化</li>
+<li>晋升淘汰规则明确化</li>
+</ul>
+<p>如果没有这些约束，AI 只会更快地产生更多过拟合策略。</p>
+<hr>
+<p><em>Generated from: SAF/tss/DISCUSS_STRATEGY_EVOLUTION.md</em></p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.ganyiming.top/">Enjoy your life! Let&#39;s Claude!</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

@@ -157,17 +157,180 @@
     </h2>
   </header>
   <div class="entry-content">
-    <p>SAF 重构迁移方案 日期: 2026-04-13 目标: 将 SAF 提升到与 StrategeFactoryFlow/TSS 并列层次，废弃两者中与 SAF 重叠的部分 范围: StrategeFactoryFlow, TSS, SAF 三个项目的回测/数据/评估层
-1. 当前架构状态 1.1 三个项目现状 qmt/ ├── SAF/ # 新共享内核（重构骨架） │ ├── src/saf/ │ │ ├── capability/ # ✅ 策略能力检测 │ │ ├── data/ # ⚠️ 框架完成，实现缺失 │ │ ├── engine/ # ⚠️ 框架完成，时序实现待补全 │ │ ├── evaluation/ # ⚠️ 框架完成，评分实现缺失 │ │ ├── models/ # ✅ 强类型对象模型 │ │ ├── orchestrator/ # ✅ 编排层框架 │ │ ├── storage/ # ✅ 接口定义 │ │ └── strategy/ # ✅ 策略解析器 │ └── tests/ │ ├── StrategeFactoryFlow/ # 策略工厂（待迁移/废弃） │ ├── evaluate/ │ │ ├── engine.py # ❌ 与 SAF engine 重复 → 废弃 │ │ ├── fast_screen_policy.py # ✅ 保留（SAF 暂无对应） │ │ └── scorer.py # ⚠️ 与 SAF evaluation 重复 → 迁移/废弃 │ ├── run_evaluate.py # ✅ 保留（批量编排） │ └── pipeline/ # ⚠️ 部分迁移 │ └── tss/ # 策略运营（待迁移/废弃） ├── data_loader.py # ❌ 与 SAF data 重复 → 废弃 ├── run_*_comparison.py # ⚠️ 保留（多策略对比） ├── vnpy_backtest_runner.py # ⚠️ SAF vnpy_adapter 替代 └── ... 1.2 SAF 能力 vs 现有实现 (2026-04-13 更新) 模块 SAF 现状 StrategeFactoryFlow TSS 结论 策略拓扑检测 ✅ 完整 ✅ 完整 ❌ 无 SAF 优，废弃 SFF FailureCode ✅ 完整 ❌ 散落字符串 ❌ 无 SAF 优，废弃 SFF 对象模型 ✅ 完整 ❌ pd.DataFrame ❌ 无 SAF 优 时序回测引擎 ✅ 完整 ✅ 完整 ⚠️ 简单实现 SAF 已可替代 SFF 截面回测引擎 ✅ 完整 ✅ 完整 ❌ 无 SAF 已可替代 SFF 配对回测引擎 ⚠️ 骨架定义 ❌ 无 ❌ 无 SAF 框架已定义，实现待补 vnpy 适配器 ⚠️ 骨架定义 ❌ 无 ✅ 完整 迁移到 SAF vnpy_adapter 数据加载 ⚠️ 协议定义 ❌ 直接用 DataService ✅ 完整 迁移 data_loader 到 SAF 评分系统 ⚠️ 简化版 ✅ 6维评分 ❌ 无 迁移 6维到 SAF evaluation 编排/批量 ✅ 框架完整 ✅ 完整 ⚠️ 脚本 SAF orchestrator 已可替代 快筛重试 ❌ 无 ✅ 完整 ❌ 无 SFF 保留或迁移到 SAF 2. 迁移原则 2.1 三不原则 不删除代码：所有待废弃代码移入 legacy/ 目录，保留历史 不中断开发：迁移期间现有流水线照常运行 不破坏接口：SAF 接口先稳定再对接 2.2 迁移顺序 Phase 1: 稳固 SAF 内核（共享层先完成） Phase 2: 废弃 StrategeFactoryFlow 中对应模块 Phase 3: 废弃 TSS 中对应模块 Phase 4: 清理 legacy/ 目录 3. 完整迁移方案 3.1 Phase 1: 稳固 SAF 内核 ✅ 已完成 (2026-04-13) 目标: 补全 SAF 中缺失的关键实现，使其能够承接废弃模块
+    <p>DevLog #001: 回测引擎选型辩论 — Qlib vs VectorBT vs 自研 日期: 2026-04-14 状态: 已定稿 Tags: architecture, backtest-engine, qlib, duckdb
+背景 在 SAF 平台开发过程中，我们面临一个关键架构决策：回测引擎层应该如何演进？
+已有的组件：
+TimeSeriesExecutionEngine — 时序执行框架 PanelExecutionEngine — 截面执行框架 VnPyAdapterEngine — vn.py CTA 适配器 BarStore (SQLite) — K 线持久化 legacy/evaluate/engine.py — 历史包袱 候选引入：
+Qlib — 截面评价 &#43; IC/IR &#43; 参数扫描 VectorBT — 参数扫描 DuckDB — 多数据源 ETL Hub 讨论焦点 1. VectorBT 的去留 初始提案：用 VectorBT 做参数扫描，替代手写参数枚举。
+辩论过程：
+支持引入方：VectorBT 的参数扫描 API 很成熟，可以节省大量开发时间 反对引入方：Qlib 已经覆盖了参数扫描能力，引入 VectorBT 会增加额外依赖 最终结论：不引入 VectorBT，理由是 Qlib 已覆盖其核心能力。
 ...</p>
   </div>
   <footer class="entry-footer"><span>James Gan</span></footer>
-  <a class="entry-link" aria-label="post link to " href="https://www.ganyiming.top/qmt/saf_migration_plan_20260413/"></a>
+  <a class="entry-link" aria-label="post link to " href="https://www.ganyiming.top/qmt/2026-04-14-backtest-engine-selection/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>QMT AI Harness 工程与扩展防线设计 文件性质: 架构决策增补草案 (针对 Blueprint 致命缺陷的修复) 重点目标: 彻底消除大模型在金融交易中的“看图作文”幻觉，并加固周边基建的容错能力。
+专项一：AI Harness 维度隔离工程设计 (解决缺陷3) 为了防止 AI 因为迎合设定的“多空人设”而产生数据幻觉，我们需要在底层设计一套**特征路由与盲区隔离（Harness）**机制。
+1. 核心设计思想：剥夺全知全能的视角 过去我们将包含 OHLC/技术指标/财务面/新闻 的整个巨大 JSON 广播给所有特工。 在全新的 Harness 设计下，系统只通过“守门人 (ContextRouter)”对数据进行脱敏切分后再下发。
+2. 维度特工阵列 (Dimensional Agents) A. 技术派特工 (Technical Agent) 看到的数据: 纯 K 线形态、MA60 均线、MACD/BOLL 极值点、价格相对强度。 被屏蔽的数据: 估值 PE、公司名字、新闻利好。 任务: 纯粹从图形和博弈阻力位出发，哪怕公司马上退市，只要底背离了也必须说看多。 B. 价值派特工 (Fundamental Agent) 看到的数据: 历史 5 年 PE/PB 绝对分位值、ROE 变化、当前行业平均市盈率。 被屏蔽的数据: K 线形态走势、短线暴涨暴跌的惊悚新闻。 任务: 冷血计算护城河与折价率。只要低于 30% 分位即给出买点，哪怕天天跌板。 C. 资金/情绪面特工 (Sentiment Agent) 看到的数据: volume_shadow (量影)、大单净流入、外部飞书资讯情绪。 任务: 捕猎当前市场主力的动向和筹码集中度。 3. Harness 融合器 (The Arbitrator) 三位盲人摸象的特工将产生极为结构化的短 JSON 报告（包含 Stance: INT 与 Confidence: 0.0-1.0）。Harness 的最终融合节点（Arbiter）将不再听他们吵架，而是基于他们不可调和的矛盾点做出终裁。 例如 Arbiter 的逻辑推演会变成：“该股技术面触发死叉（Technical输出空），但价值层因为暴跌进入极度低估区（Fundamental输出多），综合考虑这属于黄金坑，给出建仓信号。”——这才是真正的投研。
+...</p>
+  </div>
+  <footer class="entry-footer"><span>James Gan</span></footer>
+  <a class="entry-link" aria-label="post link to " href="https://www.ganyiming.top/qmt/ai_harness_design/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>量化交易系统总体架构与一统演进蓝图 (Assessment &amp; Unification Plan) 文档创建: 2026-04-05 涉及核心项目: ATMS、QMT (qmt_system)、Wavemonitor、tradingagents-cn 核心战略: 依托小步快跑迭代，正式开启多项目 Monorepo 合体进程
+一、 系统全貌与原产物核心定位 在进行统一规划前，对前期分别验证独立技术的成果及其在全局大系统中的定位梳理如下：
+1.1 ATMS: 战术监控与AI宏观决策 历史定位: 定时巡检、多维共振监控、结合大语言模型盘中辅助决策的独立系统。 技术沉淀:
+高频巡检调度: main.py 定时机制与健壮的自我降级防护。 AI 赋能辩论 (debate/): 探索出利用实时技术信号与持仓成本数据灌入 Prompt、限定 2 轮带记忆裁决的无幻觉 LLM Agent 应用机制。 消息枢纽: 基于 OpenClaw 的 atms666-stock 飞书自动化卡片推送链路。 1.2 WaveMonitor: 极速算子基座 历史定位: 探索大批量实时股票状态机计算的最优解。 技术沉淀:
+vector_engine.py (V7.1 Titan): 抛弃逐条 K 线的 if-else 判断，完全依靠 Pandas 执行纯向量化并行运算。内置双确认红绿波、状态粘性 FFill、超级防守趋势与动态吊灯止损。是所有旧版运算库（如 TA-Lib）的绝对上位替代品。 1.3 QMT System: 交易执行与底层基建 历史定位: 打通真实市场交易与跨平台研发（Mac vs Windows）隔离的底座环境。 技术沉淀:
+多端执行抽象 (executor): 基于 ExecutorBase 包含实盘 QMT 和基于滑点延迟可配置的模拟执行器 SimulatedExecutor。 多源数据网关 (stock-qdata): 优雅抹平 xtdata / akshare / csv 获取方式异构差异的数据提取中间件。 二、 当前演变断层与技术债务 在独立发展验证后，向整合系统转化存在以下架构冲突，需要在重构计划中逐个拔除：
+...</p>
+  </div>
+  <footer class="entry-footer"><span>James Gan</span></footer>
+  <a class="entry-link" aria-label="post link to " href="https://www.ganyiming.top/qmt/architecture_assessment_and_unification_plan/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>QMT 高阶架构图 下图为 QMT 项目的高阶架构视图（Mermaid）：
+%%{init: {&#34;theme&#34;:&#34;neutral&#34;}}%% flowchart LR %% Data Sources subgraph DataSources [外部数据源] XT[QMT xtdata] AK[AKShare / CSV] API[第三方 API] end %% Ingestion Layer subgraph Ingest [数据接入层] StockQ[stock-qdata (统一数据网关)] DataFeed[DataFeed (qss/core/data_feed)] end %% Core Platform subgraph Core [核心平台] Event[EventBus (异步事件总线)] Strategy[策略引擎 (策略生命周期、回放)] Executor[执行器 (Simulated / Real / Remote)] Monitor[wavemonitor (信号监控)] end %% Storage &amp; Observability subgraph Storage [存储与观测] DB[SQLite / Parquet] Metrics[Prometheus / Grafana] Logs[集中日志] end %% Config &amp; Ops subgraph Ops [配置与运维] Config[quant_config (配置中心/YAML)] CI[CI/CD] Notif[Feishu Webhook (告警/通知)] end %% Flows XT --&gt;|kline/tick| StockQ AK --&gt;|kline/csv| StockQ API --&gt;|quotes| StockQ StockQ --&gt;|normalized data| DataFeed DataFeed --&gt;|DataResult| Event Event --&gt;|tick/bar| Strategy Strategy --&gt;|order req| Executor Executor --&gt;|order/trade events| Event DataFeed --&gt;|persist| DB Strategy --&gt;|results| DB Executor --&gt;|fills| DB Event --&gt;|alerts| Monitor Monitor --&gt;|alerts| Notif Executor --&gt;|trade alerts| Notif Config --&gt; Strategy Config --&gt; Executor CI --&gt;|tests/build| Repo[(code repo)] Metrics --&gt;|dashboards| Ops Logs --&gt;|search| Ops style DataSources fill:#f8f9fa,stroke:#333,stroke-width:1px style Ingest fill:#eef6ff,stroke:#3b82f6 style Core fill:#fff7ed,stroke:#f59e0b style Storage fill:#f0fdf4,stroke:#10b981 style Ops fill:#f3f4f6,stroke:#6b7280 classDef smallText font-size:12px; class StockQ,DataFeed,Event,Strategy,Executor,DB,Config smallText; 保存路径： docs/ARCHITECTURE_HIGH_LEVEL_DIAGRAM.md
+...</p>
+  </div>
+  <footer class="entry-footer"><span>James Gan</span></footer>
+  <a class="entry-link" aria-label="post link to " href="https://www.ganyiming.top/qmt/architecture_high_level_diagram/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>QMT 系统代码架构分析 日期: 2026-04-06 分析范围: qss/, sps/, tss/, qdata/, its/, config/, scripts/, tests/ 统计口径: 已排除 .git/, .venv/, __pycache__/, .pytest_cache/, tss/output/ 等生成内容 命名说明: 对外交付物中使用 QTS 作为交易执行主系统简称；当前代码目录与 import 路径仍保持为 qss/
+1. 核心模块缩写与全称 缩写 英文全称 中文全称 当前职责 QTS Quantitative Trading System 量化交易系统 在线策略执行、风控、事件总线、执行器、API SPS Strategy Push System 策略监控推送系统 盘中监控、状态观察、消息推送 TSS Trading Strategy Search 交易策略搜索系统 策略研究、批量回测、策略比较 ITS Investment Target Selection 投资标的选择系统 个股筛选、辩论评审、金股池与记忆沉淀 说明: ITS 在当前代码里同时承载“投资决策评审 / 标的筛选”语义。本文统一采用 Investment Target Selection 这一主命名，并保留其“评审式筛选”定位。
+2. 子系统原始定位与边界 这一节补回原有文档中的“角色定位”，避免只看技术实现而忽略业务边界。
+...</p>
+  </div>
+  <footer class="entry-footer"><span>James Gan</span></footer>
+  <a class="entry-link" aria-label="post link to " href="https://www.ganyiming.top/qmt/qmt_code_architecture_20260406/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>QMT Detailed Runtime Flow 时间: 2026-04-07 目的: 画清楚 ITS / QTS / SPS / TSS / qdata / scheduler 的详细运行流程 说明: 本文分为两部分
+当前代码真实运行流程 推荐演进后的分层池消费流程 1. 当前代码真实运行流程 1.1 运行说明 当前仓库里，最稳定、最清晰的主流程是:
+夜间由 scheduler.py 拉起 nightly_screener.py nightly_screener.py 从种子池读取股票列表 ITS 用技术过滤 &#43; AI 辩论筛出可关注标的 结果写入 config/golden_pool.yaml 次日 scheduler.py 拉起 qss/main.py QTS 加载配置、数据源、执行器、风控和策略后进入交易时段运行 SPS 当前是相对独立的盘中监控链路，更多消费自己的 watchlist，而不是统一消费 ITS 分层池 1.2 详细运行流程图 flowchart TD subgraph Time0[&#34;夜间研究与洗池&#34;] A1[&#34;scheduler.py&lt;br/&gt;01:00 定时触发&#34;] --&gt; A2[&#34;job_run_nightly_screener()&#34;] A2 --&gt; A3[&#34;scripts/jobs/nightly_screener.py&#34;] A3 --&gt; A4[&#34;读取 config/pools/zxg_a_share_pool.csv&lt;br/&gt;种子股票池&#34;] A3 --&gt; A5[&#34;ConfigManager.load()&lt;br/&gt;日志 / 配置初始化&#34;] A3 --&gt; A6[&#34;DataFeed(settings)&lt;br/&gt;经 qdata / xtdata / CSV 获取日线&#34;] A3 --&gt; A7[&#34;AIClient&lt;br/&gt;LLM 客户端&#34;] A4 --&gt; A8[&#34;遍历股票&#34;] A6 --&gt; A8 A7 --&gt; A8 A8 --&gt; A9[&#34;ITS.StockScreener.screen_symbol()&#34;] A9 --&gt; A10[&#34;IndicatorEngine&lt;br/&gt;趋势过滤 / 择时过滤&#34;] A10 --&gt; A11{&#34;技术过滤通过?&#34;} A11 -- 否 --&gt; A12[&#34;skip_reason&lt;br/&gt;淘汰&#34;] A11 -- 是 --&gt; A13[&#34;DebateContextBuilder&lt;br/&gt;组装技术/价格/持仓上下文&#34;] A13 --&gt; A14[&#34;DebateEngine.run_debate()&#34;] A14 --&gt; A15[&#34;debate_to_signal()&lt;br/&gt;生成 BUY / HOLD / SELL 等信号&#34;] A15 --&gt; A16{&#34;action in BUY/STRONG_BUY?&#34;} A16 -- 否 --&gt; A17[&#34;不入池&#34;] A16 -- 是 --&gt; A18[&#34;写入 golden_symbols[]&lt;br/&gt;symbol / name / confidence / risk / logic&#34;] A18 --&gt; A19[&#34;save_golden_pool()&#34;] A19 --&gt; A20[&#34;config/golden_pool.yaml&#34;] end subgraph Time1[&#34;盘前调度&#34;] B1[&#34;scheduler.py&lt;br/&gt;09:25 定时触发&#34;] --&gt; B2[&#34;job_start_qss_engine()&#34;] B2 --&gt; B3[&#34;subprocess 启动 qss/main.py&#34;] end subgraph Time2[&#34;QTS 交易主链路&#34;] C1[&#34;qss/main.py&#34;] --&gt; C2[&#34;ConfigManager.load()&#34;] C2 --&gt; C3[&#34;DataFeed(settings)&lt;br/&gt;可接 qdata / xtdata&#34;] C2 --&gt; C4[&#34;create_executor()&lt;br/&gt;QMTExecutor 或 SimulatedExecutor&#34;] C4 --&gt; C5[&#34;ExecutorPortfolioAdapter&#34;] C5 --&gt; C6[&#34;RiskManager&#34;] C4 --&gt; C7[&#34;SignalProcessor.start()&#34;] C2 --&gt; C8[&#34;create_strategy()&lt;br/&gt;按 settings.strategies 装载策略&#34;] C8 --&gt; C9[&#34;strategy.start()&#34;] C2 --&gt; C10[&#34;NotificationBridge.start()&#34;] C2 --&gt; C11[&#34;FastAPI init_state / uvicorn&#34;] C1 --&gt; C12[&#34;进入阻塞运行 while True&#34;] C3 --&gt; C8 C6 --&gt; C7 C8 --&gt; C7 C7 --&gt; C13[&#34;风控检查 / 订单路由 / 执行&#34;] C13 --&gt; C14[&#34;QMT 实盘下单 或 模拟执行&#34;] end subgraph Time3[&#34;SPS 独立盘中监控链路&#34;] D1[&#34;sps/wave_monitor.py&#34;] --&gt; D2[&#34;读取 .watchlist_a.json&#34;] D1 --&gt; D3[&#34;QuoteFetcher&lt;br/&gt;QMT xtdata 或 Sina&#34;] D1 --&gt; D4[&#34;HistoryDataManager&#34;] D3 --&gt; D5[&#34;实时行情&#34;] D4 --&gt; D6[&#34;历史K线&#34;] D5 --&gt; D7[&#34;WaveComputeEngine&lt;br/&gt;V7.1 Titan 向量计算&#34;] D6 --&gt; D7 D7 --&gt; D8[&#34;状态机 / 变化检测 / 告警格式化&#34;] D8 --&gt; D9[&#34;控制台 / 持久化 / 推送&#34;] end subgraph Time4[&#34;TSS 研究与回测链路&#34;] E1[&#34;TSS runner / backtest&#34;] --&gt; E2[&#34;更宽研究池 / 自定义 universe&#34;] E2 --&gt; E3[&#34;qdata / CSV / yfinance / vn.py&#34;] E3 --&gt; E4[&#34;回测结果 / 对比报告&#34;] end A20 -. 次日作为候选输入 .-&gt; C8 A20 -. 当前也可供其他模块读取 .-&gt; D2 C3 --&gt;|&#34;统一数据入口&#34;| E3 2. 当前流程的关键结论 当前最明确的“日切换”主线是 scheduler -&gt; nightly_screener -&gt; golden_pool.yaml -&gt; qss/main.py ITS 已经承担了夜间评审和洗池职责 QTS 是唯一真正承担执行闭环的系统 SPS 目前更像并行监控服务，还没有完全切到统一的 ITS 输出契约 TSS 保留更宽研究池是合理的，不必被 ITS 完全约束 3. 推荐演进后的详细运行流程 3.1 演进目标 你前面提的方向我认可，推荐把 ITS 定义为“分层池生产者”，而不是“强耦合驱动所有下游”的控制中心。
+...</p>
+  </div>
+  <footer class="entry-footer"><span>James Gan</span></footer>
+  <a class="entry-link" aria-label="post link to " href="https://www.ganyiming.top/qmt/qmt_detailed_runtime_flow_20260407/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>QMT 系统管理层摘要 日期: 2026-04-07 适用对象: 老板、新同事、非核心开发成员 命名说明: 对外简称采用 QTS；当前代码目录仍为 qss/
+1. 一句话总结 QMT 不是单一策略程序，而是一套围绕量化交易建立的工作平台。它已经形成了“数据底座 &#43; 标的筛选 &#43; 策略研究 &#43; 交易执行 &#43; 监控推送”的完整闭环雏形。
+2. 四个核心子系统分别做什么 QTS QTS (Quantitative Trading System) 是交易执行主系统。
+它负责把策略信号真正落到交易闭环，包括:
+策略在线运行 风控校验 委托执行 持仓/资产状态管理 API 与运行态对外暴露 简单说，QTS 负责“做”。
+SPS SPS (Strategy Push System) 是监控推送系统。
+它负责盘中状态观察、信号变化提醒和消息推送，重点是“监控”和“告警”，不是交易执行。
+简单说，SPS 负责“看”，而且是 只推不交易。
+TSS TSS (Trading Strategy Search) 是策略研究与回测系统。
+它负责策略搜索、历史回测、参数比较和策略验证，输出的是研究结论，而不是实盘执行动作。
+简单说，TSS 负责“试”。
+ITS ITS (Investment Target Selection) 是投资标的筛选与评审系统。
+它负责从全市场中筛选候选标的，并通过多维评审给出优先级和结论。它输出的是候选池和评审报告，而不是直接下单。
+简单说，ITS 负责“挑”。
+3. 整体关系如何理解 可以用一句话概括这套体系:
+...</p>
+  </div>
+  <footer class="entry-footer"><span>James Gan</span></footer>
+  <a class="entry-link" aria-label="post link to " href="https://www.ganyiming.top/qmt/qmt_executive_brief_20260407/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>QMT 高层架构图 日期: 2026-04-06 说明: 本文档基于当前代码结构绘制，不沿用旧命名。 命名说明: 对外简称采用 QTS；当前代码目录与 import 路径仍为 qss/
+1. 模块缩写与全称 缩写 英文全称 中文全称 QTS Quantitative Trading System 量化交易系统 SPS Strategy Push System 策略监控推送系统 TSS Trading Strategy Search 交易策略搜索系统 ITS Investment Target Selection 投资标的选择系统 2. 原始定位补充 QTS: 交易执行主系统，负责真正的策略执行、风控与交易闭环 SPS: 监控推送系统，负责低频监控和消息推送，只推不交易 TSS: 策略搜索与回测系统，负责研究、验证和比较 ITS: 投资标的筛选与评审系统，负责候选股筛选与评审，看和评，不直接做 3. 系统上下文图 flowchart LR User[交易员 / 研究员 / 调度脚本] --&gt; QMT[QMT Quant Workspace] Market[QMT xtdata / AKShare / CSV / Sina / News] --&gt; QMT QMT --&gt; Notify[Feishu / Dashboard / 报表] QMT --&gt; Broker[QMT 交易终端 / 模拟执行] 4. 当前代码高层架构图 flowchart TB subgraph Config[统一配置层] CFG1[config/base.yaml] CFG2[accounts / pools / strategies] CFG3[loader.py] end subgraph Data[数据与存储层] QD[qdata.service.DataService] ADP[QMTAdapter / AKShareAdapter / CSVAdapter] ASYNC[AsyncDataService] BAR[BarStore SQLite] end subgraph Trading[交易执行层] DF[DataFeed] QTS[QTS\nQuantitative Trading System\n量化交易系统] BUS[EventBus] PROC[SignalProcessor] RISK[RiskManager] EXE[QMTExecutor / SimulatedExecutor / RemoteExecutor] API[FastAPI &#43; Dashboard] NOTI[NotificationBridge] end subgraph Monitor[盘中监控层] SPS[SPS\nStrategy Push System\n策略监控推送系统] WM[wave_monitor] QF[QuoteFetcher] VE[vector_engine] HDB[HistoryDataManager] end subgraph Research[策略研究层] TSS[TSS\nTrading Strategy Search\n交易策略搜索系统] DL[data_loader] VBT[vnpy_backtest_runner] COMP[comparison / report scripts] end subgraph Intelligence[智能分析层] ITS[ITS\nInvestment Target Selection\n投资标的选择系统] DCB[DebateContextBuilder] DEB[DebateEngine] AIC[AIClient] MEM[DebateMemoryStore] GP[GoldenPoolManager] NEWS[news &#43; sentiment] end subgraph Ops[编排运维层] SCH[scheduler.py] NIGHT[nightly_screener.py] end CFG1 --&gt; QD CFG2 --&gt; QD CFG3 --&gt; QD CFG3 --&gt; Trading CFG3 --&gt; Research ADP --&gt; QD --&gt; BAR QD --&gt; ASYNC QD --&gt; DF QD --&gt; SPS QD --&gt; TSS QD --&gt; ITS DF --&gt; QTS QTS --&gt; BUS --&gt; PROC --&gt; RISK --&gt; EXE BUS --&gt; NOTI BUS --&gt; API QF --&gt; WM VE --&gt; WM HDB --&gt; WM SPS --&gt; WM TSS --&gt; DL DL --&gt; VBT COMP --&gt; VBT ITS --&gt; DCB DCB --&gt; DEB --&gt; AIC DEB --&gt; MEM DEB --&gt; GP NEWS --&gt; DCB GP -. 候选池 / 事件 .-&gt; QTS SCH --&gt; NIGHT SCH --&gt; QTS NIGHT --&gt; ITS 5. 推荐部署图 flowchart LR subgraph StrategySide[策略与研究侧 Mac / Linux] TSS[TSS\nTrading Strategy Search] SPS[SPS\nStrategy Push System] ITS[ITS\nInvestment Target Selection] QTSL[QTS Logic\nQuantitative Trading System] QDATA[qdata] end subgraph ExecSide[执行侧 Windows &#43; QMT] REMOTE[RemoteExecutorServer] QMTX[xtdata / xttrader / QMTExecutor] TERMINAL[QMT Client] end TSS --&gt; QDATA SPS --&gt; QDATA ITS --&gt; QDATA QTSL --&gt; QDATA QTSL --&gt;|JSON-RPC/TCP| REMOTE --&gt; QMTX --&gt; TERMINAL 6. 阅读说明 qdata 是全系统共享底座 QTS 是最核心的在线执行域，也是唯一承担交易执行闭环的主系统 SPS 与 TSS 分别承担监控和研究职责，其中 SPS 只推不交易 ITS 负责智能分析、候选池沉淀和评审结论输出 scripts 负责日常编排，不直接承载业务逻辑 </p>
+  </div>
+  <footer class="entry-footer"><span>James Gan</span></footer>
+  <a class="entry-link" aria-label="post link to " href="https://www.ganyiming.top/qmt/qmt_high_level_architecture_20260406/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>QSS 到 QTS 重命名迁移方案 日期: 2026-04-07 当前结论: 推荐先做对外命名切换，再做代码层重命名 当前状态: 对外交付物已切换为 QTS，代码目录与 import 路径仍为 qss/
+1. 为什么考虑从 QSS 改为 QTS 当前对外简称最初是 QSS，但从语义上看，交易执行主系统更容易被理解为:
+QTS = Quantitative Trading System 相比之下，QSS 更容易让人联想到 Strategy System，而不是“交易执行主系统”。
+因此，从品牌和沟通角度，QTS 的确更直观。
+2. 当前现状 本次快速评估显示，仓库中与 QSS / qss/ / qss. 相关的引用约 178 处。
+这些引用分布在:
+文档 PPT 生成脚本 Python import 调度脚本 测试代码 架构图与说明文本 这意味着，QSS -&gt; QTS 不是一个“只改几行字”的动作。
+3. 风险评估 低风险部分 以下内容可以先改，不会影响系统运行:
+架构文档 汇报 PPT 对外介绍口径 模块说明 管理层摘要 中风险部分 以下内容改动后，需要回归验证:
+日志文案 调度脚本中的显示文本 文档里的目录说明 测试里的描述文字 高风险部分 以下内容一旦修改，会直接影响代码运行与导入路径:
+...</p>
+  </div>
+  <footer class="entry-footer"><span>James Gan</span></footer>
+  <a class="entry-link" aria-label="post link to " href="https://www.ganyiming.top/qmt/qts_rename_migration_plan_20260407/"></a>
+</article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>QMT Architecture Risk Details 基于当前代码仓库现状整理，聚焦此前架构文档里提到的前三类风险。 时间: 2026-04-07 范围: qmt/ 当前主仓代码、历史文档与运行脚本
+1. 文档命名与实际目录漂移 1.1 现象 仓库已经明显从历史命名体系迁移到新的模块化命名体系，但大量旧文档仍使用老名字，导致“文档里的系统”和“代码里的系统”不是同一套口径。
+当前对外推荐口径:
+当前口径 代码目录 历史口径 QTS qss/ qmt_system/ SPS sps/ wavemonitor/ TSS tss/ search_essential/ qdata qdata/ stock-qdata/ config config/ quant_config/ 1.2 具体问题 根级架构文档仍以旧目录为主，容易让阅读者误以为仓库目录尚未迁移。 子系统文档中混用了“旧目录名”和“新简称”，导致同一个模块在不同材料里有两到三个名字。 一些蓝图文档已经开始做新旧映射，但没有成为统一事实来源，阅读时仍需要人工脑补转换。 历史输出物中仍保留“qmt_system/skills/wavemonitor/”这类已经不符合当前结构的表述。 1.3 代码与文档证据 ARCHITECTURE.md 仍写 qmt_system / wavemonitor / stock-qdata / search_essential / quant_config ARCHITECTURE.md 之后的大段目录树仍基于旧结构 Architecture.md 仍以 qmt_system / search_essential / wavemonitor / stock-qdata 为主名 Architecture.md 仍把 search_essential / wavemonitor / qmt_system 当作主要模块名 ARCHITECTURE_HIGH_LEVEL_DIAGRAM.md 图中仍使用 stock-qdata / wavemonitor / quant_config integration-blueprint.md 已开始建立 旧目录 -&gt; 新简称 映射，但这份映射尚未完全反向同步到其他文档 1.4 架构层影响 沟通成本上升: 老成员说旧名，新成员看新目录，讨论容易错位 汇报口径不稳定: 对外材料、PPT、代码目录三套话语并存 重命名评估容易失真: 无法快速分辨“文档已迁移”还是“代码已迁移” 影响自动化治理: 后续如果做目录扫描、依赖图、ADR 归档，命名不统一会让结果失真 1.5 建议 指定一份主口径文档，推荐继续以 QMT_CODE_ARCHITECTURE_20260406.md 作为对外事实来源 在旧文档顶部统一加“历史文档 / 已迁移命名对照”提示，而不是默默保留旧名 对外统一使用 QTS / SPS / TSS / ITS / qdata 对内在过渡期保留说明: QTS 对应当前代码目录 qss/ 2. sys.path 注入与隐式导入较多，包边界未完全硬化 2.1 现象 当前多个核心模块和运行脚本仍通过手工修改 sys.path 来完成跨目录导入。这说明仓库虽已开始形成模块边界，但尚未完全进入“稳定包 &#43; 明确入口”的状态。
+...</p>
+  </div>
+  <footer class="entry-footer"><span>James Gan</span></footer>
+  <a class="entry-link" aria-label="post link to " href="https://www.ganyiming.top/qmt/riskforarcitecture/"></a>
 </article>
 <footer class="page-footer">
   <nav class="pagination">
     <a class="prev" href="https://www.ganyiming.top/qmt/">
       «&nbsp;Prev&nbsp;
+    </a>
+    <a class="next" href="https://www.ganyiming.top/qmt/page/3/">Next&nbsp;&nbsp;»
     </a>
   </nav>
 </footer>

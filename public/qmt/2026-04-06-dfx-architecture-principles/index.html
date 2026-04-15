@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Enjoy your life! Let&#39;s Claude!</title>
+<meta name="keywords" content="">
+<meta name="description" content="DevLog #007: DfX 架构设计原则 — QMT 大一统系统工程纪律
+日期: 2026-04-06
+状态: 架构共识
+Tags: architecture, design-principles, engineering-discipline
+
+背景
+随着 ATMS、WaveMonitor、TradingAgents 等实验性工程合体为大一统量化基建，代码体积正在膨胀。
+为了抵御熵增，我们确立以下 Design for X 的系统级工程纪律。
+
+一、Design for Maintainability — 以&quot;减法&quot;为核心
+痛点：量化项目很容易留下大量&quot;废弃的因子、没用的回测废稿、不再调用的模块&quot;。
+激进删除原则
+
+只要是被 V7.1 Titan 或新版 qss 证明已超越的旧概念（如老版的 TA-Lib 逐行遍历、老版的提示词生成器），一旦替换，连注释都不要留，直接物理删除文件。
+
+理由：在 Git 时代，代码库不应该做垃圾场。精简的代码库是对接替者（包括未来维护的 AI）最大的仁慈。
+面向 Protocol 的解耦
+设计准则：杜绝&quot;意大利面条式&quot;的深层类继承。
+例如任何只需要历史行情的数据，只约束其入参必须符合 typing.Protocol：
+class BarProvider(Protocol):
+    @property
+    def open(self) -&gt; pd.Series: ...
+    @property
+    def high(self) -&gt; pd.Series: ...
+    @property
+    def low(self) -&gt; pd.Series: ...
+    @property
+    def close(self) -&gt; pd.Series: ...
+而不是强迫它继承一个巨大的 BaseDataFeed 基类。
+
+★ Insight ─────────────────────────────────────
+Protocol vs 继承：继承是&quot;我是谁&quot;，Protocol 是&quot;我能做什么&quot;。
+用 Protocol 解耦的好处是：你只需要关心数据提供者有没有你需要的方法，
+而不是关心它在类继承树中的位置。
+──────────────────────────────────────────────────">
+<meta name="author" content="James Gan">
+<link rel="canonical" href="https://www.ganyiming.top/qmt/2026-04-06-dfx-architecture-principles/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.47e51c7d8489b002361bac156ce9a0a8776d08c5462c2cee95801efafdd90d35.css" integrity="sha256-R&#43;UcfYSJsAI2G6wVbOmgqHdtCMVGLCzulYAe&#43;v3ZDTU=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.ganyiming.top/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.ganyiming.top/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.ganyiming.top/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.ganyiming.top/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.ganyiming.top/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.ganyiming.top/qmt/2026-04-06-dfx-architecture-principles/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://www.ganyiming.top/qmt/2026-04-06-dfx-architecture-principles/">
+  <meta property="og:site_name" content="Enjoy your life! Let&#39;s Claude!">
+  <meta property="og:title" content="Enjoy your life! Let&#39;s Claude!">
+  <meta property="og:description" content="DevLog #007: DfX 架构设计原则 — QMT 大一统系统工程纪律 日期: 2026-04-06 状态: 架构共识 Tags: architecture, design-principles, engineering-discipline
+背景 随着 ATMS、WaveMonitor、TradingAgents 等实验性工程合体为大一统量化基建，代码体积正在膨胀。
+为了抵御熵增，我们确立以下 Design for X 的系统级工程纪律。
+一、Design for Maintainability — 以&#34;减法&#34;为核心 痛点：量化项目很容易留下大量&#34;废弃的因子、没用的回测废稿、不再调用的模块&#34;。
+激进删除原则 只要是被 V7.1 Titan 或新版 qss 证明已超越的旧概念（如老版的 TA-Lib 逐行遍历、老版的提示词生成器），一旦替换，连注释都不要留，直接物理删除文件。
+理由：在 Git 时代，代码库不应该做垃圾场。精简的代码库是对接替者（包括未来维护的 AI）最大的仁慈。
+面向 Protocol 的解耦 设计准则：杜绝&#34;意大利面条式&#34;的深层类继承。
+例如任何只需要历史行情的数据，只约束其入参必须符合 typing.Protocol：
+class BarProvider(Protocol): @property def open(self) -&gt; pd.Series: ... @property def high(self) -&gt; pd.Series: ... @property def low(self) -&gt; pd.Series: ... @property def close(self) -&gt; pd.Series: ... 而不是强迫它继承一个巨大的 BaseDataFeed 基类。
+★ Insight ───────────────────────────────────── Protocol vs 继承：继承是&#34;我是谁&#34;，Protocol 是&#34;我能做什么&#34;。 用 Protocol 解耦的好处是：你只需要关心数据提供者有没有你需要的方法， 而不是关心它在类继承树中的位置。 ──────────────────────────────────────────────────">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="qmt">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Enjoy your life! Let&#39;s Claude!">
+  <meta name="twitter:description" content="DevLog #007: DfX 架构设计原则 — QMT 大一统系统工程纪律 日期: 2026-04-06 状态: 架构共识 Tags: architecture, design-principles, engineering-discipline
+背景 随着 ATMS、WaveMonitor、TradingAgents 等实验性工程合体为大一统量化基建，代码体积正在膨胀。
+为了抵御熵增，我们确立以下 Design for X 的系统级工程纪律。
+一、Design for Maintainability — 以&#34;减法&#34;为核心 痛点：量化项目很容易留下大量&#34;废弃的因子、没用的回测废稿、不再调用的模块&#34;。
+激进删除原则 只要是被 V7.1 Titan 或新版 qss 证明已超越的旧概念（如老版的 TA-Lib 逐行遍历、老版的提示词生成器），一旦替换，连注释都不要留，直接物理删除文件。
+理由：在 Git 时代，代码库不应该做垃圾场。精简的代码库是对接替者（包括未来维护的 AI）最大的仁慈。
+面向 Protocol 的解耦 设计准则：杜绝&#34;意大利面条式&#34;的深层类继承。
+例如任何只需要历史行情的数据，只约束其入参必须符合 typing.Protocol：
+class BarProvider(Protocol): @property def open(self) -&gt; pd.Series: ... @property def high(self) -&gt; pd.Series: ... @property def low(self) -&gt; pd.Series: ... @property def close(self) -&gt; pd.Series: ... 而不是强迫它继承一个巨大的 BaseDataFeed 基类。
+★ Insight ───────────────────────────────────── Protocol vs 继承：继承是&#34;我是谁&#34;，Protocol 是&#34;我能做什么&#34;。 用 Protocol 解耦的好处是：你只需要关心数据提供者有没有你需要的方法， 而不是关心它在类继承树中的位置。 ──────────────────────────────────────────────────">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Qmts",
+      "item": "https://www.ganyiming.top/qmt/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "",
+      "item": "https://www.ganyiming.top/qmt/2026-04-06-dfx-architecture-principles/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "",
+  "name": "",
+  "description": "DevLog #007: DfX 架构设计原则 — QMT 大一统系统工程纪律 日期: 2026-04-06 状态: 架构共识 Tags: architecture, design-principles, engineering-discipline\n背景 随着 ATMS、WaveMonitor、TradingAgents 等实验性工程合体为大一统量化基建，代码体积正在膨胀。\n为了抵御熵增，我们确立以下 Design for X 的系统级工程纪律。\n一、Design for Maintainability — 以\u0026quot;减法\u0026quot;为核心 痛点：量化项目很容易留下大量\u0026quot;废弃的因子、没用的回测废稿、不再调用的模块\u0026quot;。\n激进删除原则 只要是被 V7.1 Titan 或新版 qss 证明已超越的旧概念（如老版的 TA-Lib 逐行遍历、老版的提示词生成器），一旦替换，连注释都不要留，直接物理删除文件。\n理由：在 Git 时代，代码库不应该做垃圾场。精简的代码库是对接替者（包括未来维护的 AI）最大的仁慈。\n面向 Protocol 的解耦 设计准则：杜绝\u0026quot;意大利面条式\u0026quot;的深层类继承。\n例如任何只需要历史行情的数据，只约束其入参必须符合 typing.Protocol：\nclass BarProvider(Protocol): @property def open(self) -\u0026gt; pd.Series: ... @property def high(self) -\u0026gt; pd.Series: ... @property def low(self) -\u0026gt; pd.Series: ... @property def close(self) -\u0026gt; pd.Series: ... 而不是强迫它继承一个巨大的 BaseDataFeed 基类。\n★ Insight ───────────────────────────────────── Protocol vs 继承：继承是\u0026quot;我是谁\u0026quot;，Protocol 是\u0026quot;我能做什么\u0026quot;。 用 Protocol 解耦的好处是：你只需要关心数据提供者有没有你需要的方法， 而不是关心它在类继承树中的位置。 ──────────────────────────────────────────────────\n",
+  "keywords": [
+    
+  ],
+  "articleBody": "DevLog #007: DfX 架构设计原则 — QMT 大一统系统工程纪律 日期: 2026-04-06 状态: 架构共识 Tags: architecture, design-principles, engineering-discipline\n背景 随着 ATMS、WaveMonitor、TradingAgents 等实验性工程合体为大一统量化基建，代码体积正在膨胀。\n为了抵御熵增，我们确立以下 Design for X 的系统级工程纪律。\n一、Design for Maintainability — 以\"减法\"为核心 痛点：量化项目很容易留下大量\"废弃的因子、没用的回测废稿、不再调用的模块\"。\n激进删除原则 只要是被 V7.1 Titan 或新版 qss 证明已超越的旧概念（如老版的 TA-Lib 逐行遍历、老版的提示词生成器），一旦替换，连注释都不要留，直接物理删除文件。\n理由：在 Git 时代，代码库不应该做垃圾场。精简的代码库是对接替者（包括未来维护的 AI）最大的仁慈。\n面向 Protocol 的解耦 设计准则：杜绝\"意大利面条式\"的深层类继承。\n例如任何只需要历史行情的数据，只约束其入参必须符合 typing.Protocol：\nclass BarProvider(Protocol): @property def open(self) -\u003e pd.Series: ... @property def high(self) -\u003e pd.Series: ... @property def low(self) -\u003e pd.Series: ... @property def close(self) -\u003e pd.Series: ... 而不是强迫它继承一个巨大的 BaseDataFeed 基类。\n★ Insight ───────────────────────────────────── Protocol vs 继承：继承是\"我是谁\"，Protocol 是\"我能做什么\"。 用 Protocol 解耦的好处是：你只需要关心数据提供者有没有你需要的方法， 而不是关心它在类继承树中的位置。 ──────────────────────────────────────────────────\n二、Design for Reliability — 以\"悲观主义\"为底色 金融系统与传统 Web 应用最大的区别：宁可宕机停止交易，也绝不能因为状态错乱搞错仓位。\nBroker 真理同步模型 痛点：系统自己在 SQLite 里算盈利，一旦代码挂了重启，本地 SQLite 状态跟券商 QMT 系统里的真实持仓对不上。\n设计准则：任何策略发出的买卖信号前，必须强制调用一次 Broker 同步接口确认真实持仓。\n\"眼见为实，系统内部账本仅作参考\" Fail-fast 与护城河降级 绝不写无休止的 while True: retry() 掩盖错误 对于深层核心错误（如交易端口崩溃），应该抛出致命异常让主进程被操作系统干净利落地杀死并重启 遇到外部错误（如大模型提供商宕机），启动物理降级，由备用纯算力引擎接管防守 ★ Insight ───────────────────────────────────── Fail-fast vs Fail-safe：在金融交易系统中，fail-fast（快速失败）往往更安全。 因为\"带病存活\"可能意味着错误的交易决策，而\"重启\"只是暂时的停机损失。 ──────────────────────────────────────────────────\n三、Design for Performance — 对单线程运行极限的敬畏 破除对象滥用 痛点：如果在高频 EventBus 中为全市场 5000 只股票每秒的 Tick 生成复杂的 Python 对象并传来传去，系统的 GC 会瞬间卡死主进程。\n设计准则：\n流经中央处理流水线的底层数据严禁包装为厚重的类实例 使用基础的 NamedTuple 或者纯粹的 Pandas DataFrame 进行矩阵运算 将 vector_engine 这种用 C 语言底座（Numpy）实现的向量运算优势发挥到极致 # ❌ 错误：大量对象创建 class TickData: def __init__(self, symbol, price, volume): self.symbol = symbol self.price = price self.volume = volume # ✅ 正确：向量化矩阵运算 bars_df = pd.DataFrame({\"close\": close_arr, \"volume\": volume_arr}) result = vector_engine.calculate(close_arr, volume_arr) 四、Design for Observability — 可观测性设计 痛点：一个无头（Headless）交易系统在云端默默运行，如果我们只能在它亏钱时才发现它出错了，那是架构的悲哀。\n系统心跳脉搏 利用 OpenClaw / 飞书 webhook 通道。每天早上开盘前与收盘后，自动推送一版包含：\n拉取条数 大模型平均响应延迟毫秒数 系统可用内存 抛弃的脏读数据量 让你感知到系统是**“健康且紧绷的”**。\n核心启示 架构并非代码堆砌，而是一种**“管理复杂度的艺术”**。\n目前的当务之急，不是去\"写多少新代码\"，而是像在园艺修剪一样， 把 ATMS 过去冗长杂乱的枝叶大刀阔斧地砍掉，让核心树干吸收营养。\nGenerated from: docs/DfX_ARCHITECTURE_PRINCIPLES.md\n",
+  "wordCount" : "217",
+  "inLanguage": "en",
+  "datePublished": "0001-01-01T00:00:00Z",
+  "dateModified": "0001-01-01T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "James Gan"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.ganyiming.top/qmt/2026-04-06-dfx-architecture-principles/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Enjoy your life! Let's Claude!",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.ganyiming.top/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.ganyiming.top/" accesskey="h" title="Enjoy your life! Let&#39;s Claude! (Alt + H)">Enjoy your life! Let&#39;s Claude!</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="https://www.ganyiming.top/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      
+    </h1>
+    <div class="post-meta"><span>James Gan</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="devlog-007-dfx-架构设计原则--qmt-大一统系统工程纪律">DevLog #007: DfX 架构设计原则 — QMT 大一统系统工程纪律<a hidden class="anchor" aria-hidden="true" href="#devlog-007-dfx-架构设计原则--qmt-大一统系统工程纪律">#</a></h1>
+<p><strong>日期</strong>: 2026-04-06
+<strong>状态</strong>: 架构共识
+<strong>Tags</strong>: architecture, design-principles, engineering-discipline</p>
+<hr>
+<h2 id="背景">背景<a hidden class="anchor" aria-hidden="true" href="#背景">#</a></h2>
+<p>随着 ATMS、WaveMonitor、TradingAgents 等实验性工程合体为<strong>大一统量化基建</strong>，代码体积正在膨胀。</p>
+<p>为了抵御熵增，我们确立以下 <strong>Design for X</strong> 的系统级工程纪律。</p>
+<hr>
+<h2 id="一design-for-maintainability--以减法为核心">一、Design for Maintainability — 以&quot;减法&quot;为核心<a hidden class="anchor" aria-hidden="true" href="#一design-for-maintainability--以减法为核心">#</a></h2>
+<p><strong>痛点</strong>：量化项目很容易留下大量&quot;废弃的因子、没用的回测废稿、不再调用的模块&quot;。</p>
+<h3 id="激进删除原则">激进删除原则<a hidden class="anchor" aria-hidden="true" href="#激进删除原则">#</a></h3>
+<blockquote>
+<p>只要是被 V7.1 Titan 或新版 qss 证明已超越的旧概念（如老版的 TA-Lib 逐行遍历、老版的提示词生成器），一旦替换，<strong>连注释都不要留，直接物理删除文件</strong>。</p>
+</blockquote>
+<p><strong>理由</strong>：在 Git 时代，代码库不应该做垃圾场。精简的代码库是对接替者（包括未来维护的 AI）最大的仁慈。</p>
+<h3 id="面向-protocol-的解耦">面向 Protocol 的解耦<a hidden class="anchor" aria-hidden="true" href="#面向-protocol-的解耦">#</a></h3>
+<p><strong>设计准则</strong>：杜绝&quot;意大利面条式&quot;的深层类继承。</p>
+<p>例如任何只需要历史行情的数据，只约束其入参必须符合 <code>typing.Protocol</code>：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">BarProvider</span>(Protocol):
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@property</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">open</span>(self) <span style="color:#f92672">-&gt;</span> pd<span style="color:#f92672">.</span>Series: <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@property</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">high</span>(self) <span style="color:#f92672">-&gt;</span> pd<span style="color:#f92672">.</span>Series: <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@property</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">low</span>(self) <span style="color:#f92672">-&gt;</span> pd<span style="color:#f92672">.</span>Series: <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#a6e22e">@property</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">close</span>(self) <span style="color:#f92672">-&gt;</span> pd<span style="color:#f92672">.</span>Series: <span style="color:#f92672">...</span>
+</span></span></code></pre></div><p>而不是强迫它继承一个巨大的 <code>BaseDataFeed</code> 基类。</p>
+<blockquote>
+<p>★ Insight ─────────────────────────────────────
+<strong>Protocol vs 继承</strong>：继承是&quot;我是谁&quot;，Protocol 是&quot;我能做什么&quot;。
+用 Protocol 解耦的好处是：你只需要关心数据提供者有没有你需要的方法，
+而不是关心它在类继承树中的位置。
+──────────────────────────────────────────────────</p>
+</blockquote>
+<hr>
+<h2 id="二design-for-reliability--以悲观主义为底色">二、Design for Reliability — 以&quot;悲观主义&quot;为底色<a hidden class="anchor" aria-hidden="true" href="#二design-for-reliability--以悲观主义为底色">#</a></h2>
+<p><strong>金融系统与传统 Web 应用最大的区别</strong>：宁可宕机停止交易，也绝不能因为状态错乱搞错仓位。</p>
+<h3 id="broker-真理同步模型">Broker 真理同步模型<a hidden class="anchor" aria-hidden="true" href="#broker-真理同步模型">#</a></h3>
+<p><strong>痛点</strong>：系统自己在 SQLite 里算盈利，一旦代码挂了重启，本地 SQLite 状态跟券商 QMT 系统里的真实持仓对不上。</p>
+<p><strong>设计准则</strong>：任何策略发出的买卖信号前，必须强制调用一次 Broker 同步接口确认真实持仓。</p>
+<pre tabindex="0"><code>&#34;眼见为实，系统内部账本仅作参考&#34;
+</code></pre><h3 id="fail-fast-与护城河降级">Fail-fast 与护城河降级<a hidden class="anchor" aria-hidden="true" href="#fail-fast-与护城河降级">#</a></h3>
+<ul>
+<li>绝不写无休止的 <code>while True: retry()</code> 掩盖错误</li>
+<li>对于深层核心错误（如交易端口崩溃），应该抛出致命异常让主进程被操作系统干净利落地杀死并重启</li>
+<li>遇到外部错误（如大模型提供商宕机），启动<strong>物理降级</strong>，由备用纯算力引擎接管防守</li>
+</ul>
+<blockquote>
+<p>★ Insight ─────────────────────────────────────
+<strong>Fail-fast  vs  Fail-safe</strong>：在金融交易系统中，fail-fast（快速失败）往往更安全。
+因为&quot;带病存活&quot;可能意味着错误的交易决策，而&quot;重启&quot;只是暂时的停机损失。
+──────────────────────────────────────────────────</p>
+</blockquote>
+<hr>
+<h2 id="三design-for-performance--对单线程运行极限的敬畏">三、Design for Performance — 对单线程运行极限的敬畏<a hidden class="anchor" aria-hidden="true" href="#三design-for-performance--对单线程运行极限的敬畏">#</a></h2>
+<h3 id="破除对象滥用">破除对象滥用<a hidden class="anchor" aria-hidden="true" href="#破除对象滥用">#</a></h3>
+<p><strong>痛点</strong>：如果在高频 EventBus 中为全市场 5000 只股票每秒的 Tick 生成复杂的 Python 对象并传来传去，系统的 GC 会瞬间卡死主进程。</p>
+<p><strong>设计准则</strong>：</p>
+<ul>
+<li>流经中央处理流水线的底层数据严禁包装为厚重的类实例</li>
+<li>使用基础的 NamedTuple 或者纯粹的 Pandas DataFrame 进行矩阵运算</li>
+<li>将 <code>vector_engine</code> 这种用 C 语言底座（Numpy）实现的向量运算优势发挥到极致</li>
+</ul>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#75715e"># ❌ 错误：大量对象创建</span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">TickData</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">__init__</span>(self, symbol, price, volume):
+</span></span><span style="display:flex;"><span>        self<span style="color:#f92672">.</span>symbol <span style="color:#f92672">=</span> symbol
+</span></span><span style="display:flex;"><span>        self<span style="color:#f92672">.</span>price <span style="color:#f92672">=</span> price
+</span></span><span style="display:flex;"><span>        self<span style="color:#f92672">.</span>volume <span style="color:#f92672">=</span> volume
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># ✅ 正确：向量化矩阵运算</span>
+</span></span><span style="display:flex;"><span>bars_df <span style="color:#f92672">=</span> pd<span style="color:#f92672">.</span>DataFrame({<span style="color:#e6db74">&#34;close&#34;</span>: close_arr, <span style="color:#e6db74">&#34;volume&#34;</span>: volume_arr})
+</span></span><span style="display:flex;"><span>result <span style="color:#f92672">=</span> vector_engine<span style="color:#f92672">.</span>calculate(close_arr, volume_arr)
+</span></span></code></pre></div><hr>
+<h2 id="四design-for-observability--可观测性设计">四、Design for Observability — 可观测性设计<a hidden class="anchor" aria-hidden="true" href="#四design-for-observability--可观测性设计">#</a></h2>
+<p><strong>痛点</strong>：一个无头（Headless）交易系统在云端默默运行，如果我们只能在它亏钱时才发现它出错了，那是架构的悲哀。</p>
+<h3 id="系统心跳脉搏">系统心跳脉搏<a hidden class="anchor" aria-hidden="true" href="#系统心跳脉搏">#</a></h3>
+<p>利用 OpenClaw / 飞书 webhook 通道。每天早上开盘前与收盘后，自动推送一版包含：</p>
+<ul>
+<li>拉取条数</li>
+<li>大模型平均响应延迟毫秒数</li>
+<li>系统可用内存</li>
+<li>抛弃的脏读数据量</li>
+</ul>
+<p>让你感知到系统是**&ldquo;健康且紧绷的&rdquo;**。</p>
+<hr>
+<h2 id="核心启示">核心启示<a hidden class="anchor" aria-hidden="true" href="#核心启示">#</a></h2>
+<blockquote>
+<p>架构并非代码堆砌，而是一种**&ldquo;管理复杂度的艺术&rdquo;**。</p>
+<p>目前的当务之急，不是去&quot;写多少新代码&quot;，而是像在园艺修剪一样，
+把 ATMS 过去冗长杂乱的枝叶大刀阔斧地砍掉，让核心树干吸收营养。</p>
+</blockquote>
+<hr>
+<p><em>Generated from: docs/DfX_ARCHITECTURE_PRINCIPLES.md</em></p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.ganyiming.top/">Enjoy your life! Let&#39;s Claude!</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

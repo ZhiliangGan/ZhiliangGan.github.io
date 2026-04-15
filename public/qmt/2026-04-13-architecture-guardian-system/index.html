@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Enjoy your life! Let&#39;s Claude!</title>
+<meta name="keywords" content="">
+<meta name="description" content="DevLog #004: SAF 架构看护体系 — 需求-特性-测试三角闭环
+日期: 2026-04-13
+状态: 已建立
+Tags: architecture, quality-assurance, requirements, testing
+
+背景
+随着 SAF 平台规模扩大，如何确保架构完整性不被侵蚀成为重要问题。我们建立了&quot;架构看护体系&quot;，通过三个核心文档形成闭环。
+
+三大核心文档
+
+  
+      
+          文档
+          用途
+          格式
+      
+  
+  
+      
+          FEATURE_TREE.md
+          SAF 完整特性树
+          特性 → 子特性 → 孙子特性
+      
+      
+          SYSTEM_REQUIREMENTS.md
+          系统需求规格
+          REQ-ID 格式
+      
+      
+          TEST_DESIGN.md
+          系统级测试设计
+          基于需求规格
+      
+  
+
+
+闭环流程
+┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│   需求规格 (SYSTEM_REQUIREMENTS.md)                          │
+│       │                                                     │
+│       ▼                                                     │
+│   特性树 (FEATURE_TREE.md)                                   │
+│       │                                                     │
+│       ▼                                                     │
+│   测试用例 (TEST_DESIGN.md)                                  │
+│       │                                                     │
+│       ▼                                                     │
+│   ┌─────────────────┐                                      │
+│   │  通过 = 功能正确  │                                      │
+│   └─────────────────┘                                      │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+
+看护机制
+CI/CD Pipeline:
+  ├── pytest (单元测试)
+  ├── pytest --cov (覆盖率检查)
+  └── 全部通过 → 部署
+验证命令
+# 运行 SAF 所有测试
+cd SAF &amp;&amp; pytest tests/ -v --cov=saf --cov-report=term-missing
+
+# 测试通过 = 系统功能良好
+
+看护目标
+通过以上机制，确保：">
+<meta name="author" content="James Gan">
+<link rel="canonical" href="https://www.ganyiming.top/qmt/2026-04-13-architecture-guardian-system/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.47e51c7d8489b002361bac156ce9a0a8776d08c5462c2cee95801efafdd90d35.css" integrity="sha256-R&#43;UcfYSJsAI2G6wVbOmgqHdtCMVGLCzulYAe&#43;v3ZDTU=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.ganyiming.top/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.ganyiming.top/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.ganyiming.top/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.ganyiming.top/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.ganyiming.top/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.ganyiming.top/qmt/2026-04-13-architecture-guardian-system/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://www.ganyiming.top/qmt/2026-04-13-architecture-guardian-system/">
+  <meta property="og:site_name" content="Enjoy your life! Let&#39;s Claude!">
+  <meta property="og:title" content="Enjoy your life! Let&#39;s Claude!">
+  <meta property="og:description" content="DevLog #004: SAF 架构看护体系 — 需求-特性-测试三角闭环 日期: 2026-04-13 状态: 已建立 Tags: architecture, quality-assurance, requirements, testing
+背景 随着 SAF 平台规模扩大，如何确保架构完整性不被侵蚀成为重要问题。我们建立了&#34;架构看护体系&#34;，通过三个核心文档形成闭环。
+三大核心文档 文档 用途 格式 FEATURE_TREE.md SAF 完整特性树 特性 → 子特性 → 孙子特性 SYSTEM_REQUIREMENTS.md 系统需求规格 REQ-ID 格式 TEST_DESIGN.md 系统级测试设计 基于需求规格 闭环流程 ┌──────────────────────────────────────────────────────────────┐ │ │ │ 需求规格 (SYSTEM_REQUIREMENTS.md) │ │ │ │ │ ▼ │ │ 特性树 (FEATURE_TREE.md) │ │ │ │ │ ▼ │ │ 测试用例 (TEST_DESIGN.md) │ │ │ │ │ ▼ │ │ ┌─────────────────┐ │ │ │ 通过 = 功能正确 │ │ │ └─────────────────┘ │ │ │ └──────────────────────────────────────────────────────────────┘ 看护机制 CI/CD Pipeline: ├── pytest (单元测试) ├── pytest --cov (覆盖率检查) └── 全部通过 → 部署 验证命令 # 运行 SAF 所有测试 cd SAF &amp;&amp; pytest tests/ -v --cov=saf --cov-report=term-missing # 测试通过 = 系统功能良好 看护目标 通过以上机制，确保：">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="qmt">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Enjoy your life! Let&#39;s Claude!">
+  <meta name="twitter:description" content="DevLog #004: SAF 架构看护体系 — 需求-特性-测试三角闭环 日期: 2026-04-13 状态: 已建立 Tags: architecture, quality-assurance, requirements, testing
+背景 随着 SAF 平台规模扩大，如何确保架构完整性不被侵蚀成为重要问题。我们建立了&#34;架构看护体系&#34;，通过三个核心文档形成闭环。
+三大核心文档 文档 用途 格式 FEATURE_TREE.md SAF 完整特性树 特性 → 子特性 → 孙子特性 SYSTEM_REQUIREMENTS.md 系统需求规格 REQ-ID 格式 TEST_DESIGN.md 系统级测试设计 基于需求规格 闭环流程 ┌──────────────────────────────────────────────────────────────┐ │ │ │ 需求规格 (SYSTEM_REQUIREMENTS.md) │ │ │ │ │ ▼ │ │ 特性树 (FEATURE_TREE.md) │ │ │ │ │ ▼ │ │ 测试用例 (TEST_DESIGN.md) │ │ │ │ │ ▼ │ │ ┌─────────────────┐ │ │ │ 通过 = 功能正确 │ │ │ └─────────────────┘ │ │ │ └──────────────────────────────────────────────────────────────┘ 看护机制 CI/CD Pipeline: ├── pytest (单元测试) ├── pytest --cov (覆盖率检查) └── 全部通过 → 部署 验证命令 # 运行 SAF 所有测试 cd SAF &amp;&amp; pytest tests/ -v --cov=saf --cov-report=term-missing # 测试通过 = 系统功能良好 看护目标 通过以上机制，确保：">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Qmts",
+      "item": "https://www.ganyiming.top/qmt/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "",
+      "item": "https://www.ganyiming.top/qmt/2026-04-13-architecture-guardian-system/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "",
+  "name": "",
+  "description": "DevLog #004: SAF 架构看护体系 — 需求-特性-测试三角闭环 日期: 2026-04-13 状态: 已建立 Tags: architecture, quality-assurance, requirements, testing\n背景 随着 SAF 平台规模扩大，如何确保架构完整性不被侵蚀成为重要问题。我们建立了\u0026quot;架构看护体系\u0026quot;，通过三个核心文档形成闭环。\n三大核心文档 文档 用途 格式 FEATURE_TREE.md SAF 完整特性树 特性 → 子特性 → 孙子特性 SYSTEM_REQUIREMENTS.md 系统需求规格 REQ-ID 格式 TEST_DESIGN.md 系统级测试设计 基于需求规格 闭环流程 ┌──────────────────────────────────────────────────────────────┐ │ │ │ 需求规格 (SYSTEM_REQUIREMENTS.md) │ │ │ │ │ ▼ │ │ 特性树 (FEATURE_TREE.md) │ │ │ │ │ ▼ │ │ 测试用例 (TEST_DESIGN.md) │ │ │ │ │ ▼ │ │ ┌─────────────────┐ │ │ │ 通过 = 功能正确 │ │ │ └─────────────────┘ │ │ │ └──────────────────────────────────────────────────────────────┘ 看护机制 CI/CD Pipeline: ├── pytest (单元测试) ├── pytest --cov (覆盖率检查) └── 全部通过 → 部署 验证命令 # 运行 SAF 所有测试 cd SAF \u0026amp;\u0026amp; pytest tests/ -v --cov=saf --cov-report=term-missing # 测试通过 = 系统功能良好 看护目标 通过以上机制，确保：\n",
+  "keywords": [
+    
+  ],
+  "articleBody": "DevLog #004: SAF 架构看护体系 — 需求-特性-测试三角闭环 日期: 2026-04-13 状态: 已建立 Tags: architecture, quality-assurance, requirements, testing\n背景 随着 SAF 平台规模扩大，如何确保架构完整性不被侵蚀成为重要问题。我们建立了\"架构看护体系\"，通过三个核心文档形成闭环。\n三大核心文档 文档 用途 格式 FEATURE_TREE.md SAF 完整特性树 特性 → 子特性 → 孙子特性 SYSTEM_REQUIREMENTS.md 系统需求规格 REQ-ID 格式 TEST_DESIGN.md 系统级测试设计 基于需求规格 闭环流程 ┌──────────────────────────────────────────────────────────────┐ │ │ │ 需求规格 (SYSTEM_REQUIREMENTS.md) │ │ │ │ │ ▼ │ │ 特性树 (FEATURE_TREE.md) │ │ │ │ │ ▼ │ │ 测试用例 (TEST_DESIGN.md) │ │ │ │ │ ▼ │ │ ┌─────────────────┐ │ │ │ 通过 = 功能正确 │ │ │ └─────────────────┘ │ │ │ └──────────────────────────────────────────────────────────────┘ 看护机制 CI/CD Pipeline: ├── pytest (单元测试) ├── pytest --cov (覆盖率检查) └── 全部通过 → 部署 验证命令 # 运行 SAF 所有测试 cd SAF \u0026\u0026 pytest tests/ -v --cov=saf --cov-report=term-missing # 测试通过 = 系统功能良好 看护目标 通过以上机制，确保：\n需求可追溯 — 每个测试对应一个需求ID 特性全覆盖 — 特性树中的每个节点都有测试 架构被看护 — 测试失败 = 架构退化 = 必须修复 文档模板 Feature Tree 模板 # {子系统名} 特性树 ## 整体定位 {subsystem description} ## 顶层业务流程 {业务流图} ## 特性树 {root} ├── 1. {Category} │ ├── 1.1 {Feature} │ │ └── {Sub-feature} ... System Requirements 模板 # {子系统} 系统需求规格 ## 系统定位 {定位描述} ## 功能需求 | 需求ID | 需求描述 | 验收标准 | |--------|----------|----------| | REQ-{MOD}-{###} | ... | ... | Test Design 模板 # {子系统} 系统级测试设计 ## 测试分层 - Unit Tests - Integration Tests - E2E Tests ## 测试用例 ### {Category} #### UT-{MOD}-###: {Test Name} def test_xxx(): \"\"\"REQ-XXX: {需求描述}\"\"\" ... 子系统交付状态 子系统 负责人 交付物 状态 SAF Claude FEATURE_TREE + REQ + TEST ✅ 完成 strategy_factory (待输出) 同上格式 ⏳ tss (待输出) 同上格式 ⏳ 架构看护的价值 ★ Insight ───────────────────────────────────── 架构退化往往发生在\"不经意的小改动\"中。 当没有系统性看护时，开发者可能为了快速解决问题而绕过架构约束， 久而久之，架构就变成了\"技术债务的废墟\"。\n架构看护体系的核心价值不是\"限制自由度\"，而是\"让架构退化成为可量化的指标\"。 当测试失败时，架构退化不再是模糊的\"感觉\"，而是具体的数字。 ──────────────────────────────────────────────────\nGenerated from: SAF/docs/ARCHITECTURE_GUARDIAN.md\n",
+  "wordCount" : "254",
+  "inLanguage": "en",
+  "datePublished": "0001-01-01T00:00:00Z",
+  "dateModified": "0001-01-01T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "James Gan"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.ganyiming.top/qmt/2026-04-13-architecture-guardian-system/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Enjoy your life! Let's Claude!",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.ganyiming.top/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.ganyiming.top/" accesskey="h" title="Enjoy your life! Let&#39;s Claude! (Alt + H)">Enjoy your life! Let&#39;s Claude!</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="https://www.ganyiming.top/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      
+    </h1>
+    <div class="post-meta"><span>James Gan</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="devlog-004-saf-架构看护体系--需求-特性-测试三角闭环">DevLog #004: SAF 架构看护体系 — 需求-特性-测试三角闭环<a hidden class="anchor" aria-hidden="true" href="#devlog-004-saf-架构看护体系--需求-特性-测试三角闭环">#</a></h1>
+<p><strong>日期</strong>: 2026-04-13
+<strong>状态</strong>: 已建立
+<strong>Tags</strong>: architecture, quality-assurance, requirements, testing</p>
+<hr>
+<h2 id="背景">背景<a hidden class="anchor" aria-hidden="true" href="#背景">#</a></h2>
+<p>随着 SAF 平台规模扩大，如何确保<strong>架构完整性不被侵蚀</strong>成为重要问题。我们建立了&quot;架构看护体系&quot;，通过三个核心文档形成闭环。</p>
+<hr>
+<h2 id="三大核心文档">三大核心文档<a hidden class="anchor" aria-hidden="true" href="#三大核心文档">#</a></h2>
+<table>
+  <thead>
+      <tr>
+          <th>文档</th>
+          <th>用途</th>
+          <th>格式</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td><code>FEATURE_TREE.md</code></td>
+          <td>SAF 完整特性树</td>
+          <td>特性 → 子特性 → 孙子特性</td>
+      </tr>
+      <tr>
+          <td><code>SYSTEM_REQUIREMENTS.md</code></td>
+          <td>系统需求规格</td>
+          <td>REQ-ID 格式</td>
+      </tr>
+      <tr>
+          <td><code>TEST_DESIGN.md</code></td>
+          <td>系统级测试设计</td>
+          <td>基于需求规格</td>
+      </tr>
+  </tbody>
+</table>
+<hr>
+<h2 id="闭环流程">闭环流程<a hidden class="anchor" aria-hidden="true" href="#闭环流程">#</a></h2>
+<pre tabindex="0"><code>┌──────────────────────────────────────────────────────────────┐
+│                                                              │
+│   需求规格 (SYSTEM_REQUIREMENTS.md)                          │
+│       │                                                     │
+│       ▼                                                     │
+│   特性树 (FEATURE_TREE.md)                                   │
+│       │                                                     │
+│       ▼                                                     │
+│   测试用例 (TEST_DESIGN.md)                                  │
+│       │                                                     │
+│       ▼                                                     │
+│   ┌─────────────────┐                                      │
+│   │  通过 = 功能正确  │                                      │
+│   └─────────────────┘                                      │
+│                                                              │
+└──────────────────────────────────────────────────────────────┘
+</code></pre><hr>
+<h2 id="看护机制">看护机制<a hidden class="anchor" aria-hidden="true" href="#看护机制">#</a></h2>
+<pre tabindex="0"><code>CI/CD Pipeline:
+  ├── pytest (单元测试)
+  ├── pytest --cov (覆盖率检查)
+  └── 全部通过 → 部署
+</code></pre><h3 id="验证命令">验证命令<a hidden class="anchor" aria-hidden="true" href="#验证命令">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-bash" data-lang="bash"><span style="display:flex;"><span><span style="color:#75715e"># 运行 SAF 所有测试</span>
+</span></span><span style="display:flex;"><span>cd SAF <span style="color:#f92672">&amp;&amp;</span> pytest tests/ -v --cov<span style="color:#f92672">=</span>saf --cov-report<span style="color:#f92672">=</span>term-missing
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e"># 测试通过 = 系统功能良好</span>
+</span></span></code></pre></div><hr>
+<h2 id="看护目标">看护目标<a hidden class="anchor" aria-hidden="true" href="#看护目标">#</a></h2>
+<p>通过以上机制，确保：</p>
+<ol>
+<li><strong>需求可追溯</strong> — 每个测试对应一个需求ID</li>
+<li><strong>特性全覆盖</strong> — 特性树中的每个节点都有测试</li>
+<li><strong>架构被看护</strong> — 测试失败 = 架构退化 = 必须修复</li>
+</ol>
+<hr>
+<h2 id="文档模板">文档模板<a hidden class="anchor" aria-hidden="true" href="#文档模板">#</a></h2>
+<h3 id="feature-tree-模板">Feature Tree 模板<a hidden class="anchor" aria-hidden="true" href="#feature-tree-模板">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-markdown" data-lang="markdown"><span style="display:flex;"><span># {子系统名} 特性树
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">## 整体定位
+</span></span></span><span style="display:flex;"><span>{subsystem description}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">## 顶层业务流程
+</span></span></span><span style="display:flex;"><span>{业务流图}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">## 特性树
+</span></span></span><span style="display:flex;"><span>{root}
+</span></span><span style="display:flex;"><span>├── 1. {Category}
+</span></span><span style="display:flex;"><span>│   ├── 1.1 {Feature}
+</span></span><span style="display:flex;"><span>│   │   └── {Sub-feature}
+</span></span><span style="display:flex;"><span>...
+</span></span></code></pre></div><h3 id="system-requirements-模板">System Requirements 模板<a hidden class="anchor" aria-hidden="true" href="#system-requirements-模板">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-markdown" data-lang="markdown"><span style="display:flex;"><span># {子系统} 系统需求规格
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">## 系统定位
+</span></span></span><span style="display:flex;"><span>{定位描述}
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">## 功能需求
+</span></span></span><span style="display:flex;"><span>| 需求ID | 需求描述 | 验收标准 |
+</span></span><span style="display:flex;"><span>|--------|----------|----------|
+</span></span><span style="display:flex;"><span>| REQ-{MOD}-{###} | ... | ... |
+</span></span></code></pre></div><h3 id="test-design-模板">Test Design 模板<a hidden class="anchor" aria-hidden="true" href="#test-design-模板">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-markdown" data-lang="markdown"><span style="display:flex;"><span># {子系统} 系统级测试设计
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">## 测试分层
+</span></span></span><span style="display:flex;"><span><span style="color:#66d9ef">-</span> Unit Tests
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">-</span> Integration Tests
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">-</span> E2E Tests
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">## 测试用例
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e">### {Category}
+</span></span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">#### UT-{MOD}-###: {Test Name}
+</span></span></span><span style="display:flex;"><span>def test_xxx():
+</span></span><span style="display:flex;"><span>    &#34;&#34;&#34;REQ-XXX: {需求描述}&#34;&#34;&#34;
+</span></span><span style="display:flex;"><span>    ...
+</span></span></code></pre></div><hr>
+<h2 id="子系统交付状态">子系统交付状态<a hidden class="anchor" aria-hidden="true" href="#子系统交付状态">#</a></h2>
+<table>
+  <thead>
+      <tr>
+          <th>子系统</th>
+          <th>负责人</th>
+          <th>交付物</th>
+          <th>状态</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>SAF</td>
+          <td>Claude</td>
+          <td>FEATURE_TREE + REQ + TEST</td>
+          <td>✅ 完成</td>
+      </tr>
+      <tr>
+          <td>strategy_factory</td>
+          <td>(待输出)</td>
+          <td>同上格式</td>
+          <td>⏳</td>
+      </tr>
+      <tr>
+          <td>tss</td>
+          <td>(待输出)</td>
+          <td>同上格式</td>
+          <td>⏳</td>
+      </tr>
+  </tbody>
+</table>
+<hr>
+<h2 id="架构看护的价值">架构看护的价值<a hidden class="anchor" aria-hidden="true" href="#架构看护的价值">#</a></h2>
+<blockquote>
+<p>★ Insight ─────────────────────────────────────
+<strong>架构退化往往发生在&quot;不经意的小改动&quot;中</strong>。
+当没有系统性看护时，开发者可能为了快速解决问题而绕过架构约束，
+久而久之，架构就变成了&quot;技术债务的废墟&quot;。</p>
+<p>架构看护体系的核心价值不是&quot;限制自由度&quot;，而是&quot;让架构退化成为可量化的指标&quot;。
+当测试失败时，架构退化不再是模糊的&quot;感觉&quot;，而是具体的数字。
+──────────────────────────────────────────────────</p>
+</blockquote>
+<hr>
+<p><em>Generated from: SAF/docs/ARCHITECTURE_GUARDIAN.md</em></p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.ganyiming.top/">Enjoy your life! Let&#39;s Claude!</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>

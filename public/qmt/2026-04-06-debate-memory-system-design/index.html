@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto" data-theme="auto">
+
+<head><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>Enjoy your life! Let&#39;s Claude!</title>
+<meta name="keywords" content="">
+<meta name="description" content="DevLog #006: 辩论引擎记忆系统设计 — SQLite &#43; FTS5 三阶段演进
+日期: 2026-04-06
+状态: 实施中
+Tags: its, debate-engine, memory-system, sqlite, fts5
+
+现状分析
+当前记忆机制的缺陷
+辩论引擎 (its/debate/engine.py) 的&quot;记忆&quot;仅是进程内的 round-to-round dict:
+previous_round = {
+    &#34;bull&#34;: bull_output,   # 本轮多头输出
+    &#34;bear&#34;: bear_output,   # 本轮空头输出
+    &#34;arbiter&#34;: arbiter_output,  # 本轮裁判输出
+}
+三大问题：
+
+进程重启后记忆消失
+同一股票不同时间辩论，无法参考历史判断
+没有事后复盘（辩论决策 vs 实际走势）
+
+
+业界方案对比
+
+  
+      
+          方案
+          来源
+          存储
+          检索方式
+      
+  
+  
+      
+          ChromaDB 向量记忆
+          TradingAgents-CN
+          ChromaDB
+          Embedding 相似度
+      
+      
+          QMD 混合搜索
+          OpenClaw/Tobi Lütke
+          SQLite &#43; FTS5 &#43; sqlite-vec
+          BM25 &#43; 向量 &#43; LLM 重排
+      
+      
+          本方案
+          QMT
+          SQLite &#43; FTS5
+          BM25 全文搜索（可升级向量）
+      
+  
+
+为什么不直接用 QMD / ChromaDB
+
+QMD 是 Node.js 工具，跨语言调用引入不必要的复杂度
+ChromaDB 是独立数据库服务，对当前项目规模（单机交易）过重
+SQLite 零部署、Python 内置、性能足够（单机万级记录）
+
+
+三阶段演进方案
+Phase 1 (P0)          Phase 2 (P1)           Phase 3 (P2)
+────────────────────────────────────────────────────────────
+SQLite 辩论历史存储  →  反思机制 (Reflection)  →  语义检索升级
+    ↓                      ↓                      ↓
+持久化 &#43; 查询        事后评估 vs 实际走势      特征向量相似度
+Phase 1: SQLite 辩论历史存储
+目标: 辩论结果持久化，支持按股票/日期查询历史。">
+<meta name="author" content="James Gan">
+<link rel="canonical" href="https://www.ganyiming.top/qmt/2026-04-06-debate-memory-system-design/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.47e51c7d8489b002361bac156ce9a0a8776d08c5462c2cee95801efafdd90d35.css" integrity="sha256-R&#43;UcfYSJsAI2G6wVbOmgqHdtCMVGLCzulYAe&#43;v3ZDTU=" rel="preload stylesheet" as="style">
+<link rel="icon" href="https://www.ganyiming.top/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.ganyiming.top/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://www.ganyiming.top/favicon-32x32.png">
+<link rel="apple-touch-icon" href="https://www.ganyiming.top/apple-touch-icon.png">
+<link rel="mask-icon" href="https://www.ganyiming.top/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="https://www.ganyiming.top/qmt/2026-04-06-debate-memory-system-design/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+                color-scheme: dark;
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .toc {
+                background: var(--entry);
+            }
+        }
+
+    </style>
+</noscript>
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else if (localStorage.getItem("pref-theme") === "light") {
+       document.querySelector("html").dataset.theme = 'light';
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.querySelector("html").dataset.theme = 'dark';
+    } else {
+        document.querySelector("html").dataset.theme = 'light';
+    }
+
+</script><meta property="og:url" content="https://www.ganyiming.top/qmt/2026-04-06-debate-memory-system-design/">
+  <meta property="og:site_name" content="Enjoy your life! Let&#39;s Claude!">
+  <meta property="og:title" content="Enjoy your life! Let&#39;s Claude!">
+  <meta property="og:description" content="DevLog #006: 辩论引擎记忆系统设计 — SQLite &#43; FTS5 三阶段演进 日期: 2026-04-06 状态: 实施中 Tags: its, debate-engine, memory-system, sqlite, fts5
+现状分析 当前记忆机制的缺陷 辩论引擎 (its/debate/engine.py) 的&#34;记忆&#34;仅是进程内的 round-to-round dict:
+previous_round = { &#34;bull&#34;: bull_output, # 本轮多头输出 &#34;bear&#34;: bear_output, # 本轮空头输出 &#34;arbiter&#34;: arbiter_output, # 本轮裁判输出 } 三大问题：
+进程重启后记忆消失 同一股票不同时间辩论，无法参考历史判断 没有事后复盘（辩论决策 vs 实际走势） 业界方案对比 方案 来源 存储 检索方式 ChromaDB 向量记忆 TradingAgents-CN ChromaDB Embedding 相似度 QMD 混合搜索 OpenClaw/Tobi Lütke SQLite &#43; FTS5 &#43; sqlite-vec BM25 &#43; 向量 &#43; LLM 重排 本方案 QMT SQLite &#43; FTS5 BM25 全文搜索（可升级向量） 为什么不直接用 QMD / ChromaDB QMD 是 Node.js 工具，跨语言调用引入不必要的复杂度 ChromaDB 是独立数据库服务，对当前项目规模（单机交易）过重 SQLite 零部署、Python 内置、性能足够（单机万级记录） 三阶段演进方案 Phase 1 (P0) Phase 2 (P1) Phase 3 (P2) ──────────────────────────────────────────────────────────── SQLite 辩论历史存储 → 反思机制 (Reflection) → 语义检索升级 ↓ ↓ ↓ 持久化 &#43; 查询 事后评估 vs 实际走势 特征向量相似度 Phase 1: SQLite 辩论历史存储 目标: 辩论结果持久化，支持按股票/日期查询历史。">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="qmt">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Enjoy your life! Let&#39;s Claude!">
+  <meta name="twitter:description" content="DevLog #006: 辩论引擎记忆系统设计 — SQLite &#43; FTS5 三阶段演进 日期: 2026-04-06 状态: 实施中 Tags: its, debate-engine, memory-system, sqlite, fts5
+现状分析 当前记忆机制的缺陷 辩论引擎 (its/debate/engine.py) 的&#34;记忆&#34;仅是进程内的 round-to-round dict:
+previous_round = { &#34;bull&#34;: bull_output, # 本轮多头输出 &#34;bear&#34;: bear_output, # 本轮空头输出 &#34;arbiter&#34;: arbiter_output, # 本轮裁判输出 } 三大问题：
+进程重启后记忆消失 同一股票不同时间辩论，无法参考历史判断 没有事后复盘（辩论决策 vs 实际走势） 业界方案对比 方案 来源 存储 检索方式 ChromaDB 向量记忆 TradingAgents-CN ChromaDB Embedding 相似度 QMD 混合搜索 OpenClaw/Tobi Lütke SQLite &#43; FTS5 &#43; sqlite-vec BM25 &#43; 向量 &#43; LLM 重排 本方案 QMT SQLite &#43; FTS5 BM25 全文搜索（可升级向量） 为什么不直接用 QMD / ChromaDB QMD 是 Node.js 工具，跨语言调用引入不必要的复杂度 ChromaDB 是独立数据库服务，对当前项目规模（单机交易）过重 SQLite 零部署、Python 内置、性能足够（单机万级记录） 三阶段演进方案 Phase 1 (P0) Phase 2 (P1) Phase 3 (P2) ──────────────────────────────────────────────────────────── SQLite 辩论历史存储 → 反思机制 (Reflection) → 语义检索升级 ↓ ↓ ↓ 持久化 &#43; 查询 事后评估 vs 实际走势 特征向量相似度 Phase 1: SQLite 辩论历史存储 目标: 辩论结果持久化，支持按股票/日期查询历史。">
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Qmts",
+      "item": "https://www.ganyiming.top/qmt/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "",
+      "item": "https://www.ganyiming.top/qmt/2026-04-06-debate-memory-system-design/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "",
+  "name": "",
+  "description": "DevLog #006: 辩论引擎记忆系统设计 — SQLite + FTS5 三阶段演进 日期: 2026-04-06 状态: 实施中 Tags: its, debate-engine, memory-system, sqlite, fts5\n现状分析 当前记忆机制的缺陷 辩论引擎 (its/debate/engine.py) 的\u0026quot;记忆\u0026quot;仅是进程内的 round-to-round dict:\nprevious_round = { \u0026#34;bull\u0026#34;: bull_output, # 本轮多头输出 \u0026#34;bear\u0026#34;: bear_output, # 本轮空头输出 \u0026#34;arbiter\u0026#34;: arbiter_output, # 本轮裁判输出 } 三大问题：\n进程重启后记忆消失 同一股票不同时间辩论，无法参考历史判断 没有事后复盘（辩论决策 vs 实际走势） 业界方案对比 方案 来源 存储 检索方式 ChromaDB 向量记忆 TradingAgents-CN ChromaDB Embedding 相似度 QMD 混合搜索 OpenClaw/Tobi Lütke SQLite + FTS5 + sqlite-vec BM25 + 向量 + LLM 重排 本方案 QMT SQLite + FTS5 BM25 全文搜索（可升级向量） 为什么不直接用 QMD / ChromaDB QMD 是 Node.js 工具，跨语言调用引入不必要的复杂度 ChromaDB 是独立数据库服务，对当前项目规模（单机交易）过重 SQLite 零部署、Python 内置、性能足够（单机万级记录） 三阶段演进方案 Phase 1 (P0) Phase 2 (P1) Phase 3 (P2) ──────────────────────────────────────────────────────────── SQLite 辩论历史存储 → 反思机制 (Reflection) → 语义检索升级 ↓ ↓ ↓ 持久化 + 查询 事后评估 vs 实际走势 特征向量相似度 Phase 1: SQLite 辩论历史存储 目标: 辩论结果持久化，支持按股票/日期查询历史。\n",
+  "keywords": [
+    
+  ],
+  "articleBody": "DevLog #006: 辩论引擎记忆系统设计 — SQLite + FTS5 三阶段演进 日期: 2026-04-06 状态: 实施中 Tags: its, debate-engine, memory-system, sqlite, fts5\n现状分析 当前记忆机制的缺陷 辩论引擎 (its/debate/engine.py) 的\"记忆\"仅是进程内的 round-to-round dict:\nprevious_round = { \"bull\": bull_output, # 本轮多头输出 \"bear\": bear_output, # 本轮空头输出 \"arbiter\": arbiter_output, # 本轮裁判输出 } 三大问题：\n进程重启后记忆消失 同一股票不同时间辩论，无法参考历史判断 没有事后复盘（辩论决策 vs 实际走势） 业界方案对比 方案 来源 存储 检索方式 ChromaDB 向量记忆 TradingAgents-CN ChromaDB Embedding 相似度 QMD 混合搜索 OpenClaw/Tobi Lütke SQLite + FTS5 + sqlite-vec BM25 + 向量 + LLM 重排 本方案 QMT SQLite + FTS5 BM25 全文搜索（可升级向量） 为什么不直接用 QMD / ChromaDB QMD 是 Node.js 工具，跨语言调用引入不必要的复杂度 ChromaDB 是独立数据库服务，对当前项目规模（单机交易）过重 SQLite 零部署、Python 内置、性能足够（单机万级记录） 三阶段演进方案 Phase 1 (P0) Phase 2 (P1) Phase 3 (P2) ──────────────────────────────────────────────────────────── SQLite 辩论历史存储 → 反思机制 (Reflection) → 语义检索升级 ↓ ↓ ↓ 持久化 + 查询 事后评估 vs 实际走势 特征向量相似度 Phase 1: SQLite 辩论历史存储 目标: 辩论结果持久化，支持按股票/日期查询历史。\n核心 API:\nclass DebateMemoryStore: def save(self, result: DebateResult) -\u003e int: ... def get_recent(self, symbol: str, limit: int = 5) -\u003e list[DebateRecord]: ... def get_by_date_range(self, start: str, end: str) -\u003e list[DebateRecord]: ... def search(self, query: str, limit: int = 10) -\u003e list[DebateRecord]: ... 数据模型:\n字段 类型 说明 id INTEGER PK 自增主键 symbol TEXT 股票代码 name TEXT 股票名称 price REAL 辩论时价格 action TEXT BUY/SELL/HOLD/WATCH winner TEXT BULL/BEAR/DRAW reasoning TEXT 裁判理由（FTS5 索引） bull_thesis TEXT 多头论点（FTS5 索引） bear_thesis TEXT 空头论点（FTS5 索引） Phase 2: 反思机制 (Reflection) 目标: 事后评估辩论决策 vs 实际走势，存储经验教训。\n交易信号执行后 → T+1/T+N 获取实际走势 ↓ Reflector.evaluate(debate_record, actual_outcome) ↓ LLM 分析: \"判断是否正确？为什么对/错？\" ↓ ReflectionRecord 存入 SQLite ↓ 下次辩论时注入历史经验 Phase 3: 语义检索升级 目标: 基于行情特征相似度召回历史经验，而非仅按股票代码。\n方案演进：\n短期: 用 FTS5 + 关键词匹配（MA60支撑、MACD金叉 等） 中期: 引入 sqlite-vec 扩展存储 embedding 向量 长期: 对接本地 GGUF embedding 模型 ★ Insight ───────────────────────────────────── SQLite + FTS5 是一个被低估的组合。 对于单机量化系统，FTS5 的 BM25 全文搜索已经足够满足语义召回需求， 无需引入沉重的向量数据库。sqlite-vec 扩展让未来升级到向量检索成为可能， 但可以等到真正需要时再升级。 ──────────────────────────────────────────────────\n集成点 DebateEngine 集成 class DebateEngine: def __init__(self, client, config, memory_store=None): self.memory_store = memory_store # 新增 def run_debate(self, symbol, context): # 新增: 查询历史记忆 history = self.memory_store.get_recent(symbol) if self.memory_store else [] # ... 注入到 prompt_ctx ... result = ... # 原有辩论逻辑 # 新增: 保存辩论结果 if self.memory_store: self.memory_store.save(result) return result Prompts 增强 def build_bull_prompt(context, previous_round=None, history=None): if history: parts.append(\"\\n## 历史辩论记录\") for record in history[-3:]: parts.append(f\"- {record.created_at}: {record.action} \" f\"(rating={record.rating}, conf={record.confidence:.0%})\") 文件结构 its/ memory/ __init__.py store.py # Phase 1: DebateMemoryStore reflection.py # Phase 2: Reflector search.py # Phase 3: SemanticSearch models.py # 数据模型 实施优先级 Phase 价值 复杂度 优先级 Phase 1 避免重复辩论，节约 API 成本 低 P0 Phase 2 从错误中学习，提升决策质量 中 P1 Phase 3 跨股票经验迁移 高 P2 Generated from: docs/MEMORY_SYSTEM_DESIGN.md\n",
+  "wordCount" : "381",
+  "inLanguage": "en",
+  "datePublished": "0001-01-01T00:00:00Z",
+  "dateModified": "0001-01-01T00:00:00Z",
+  "author":{
+    "@type": "Person",
+    "name": "James Gan"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "https://www.ganyiming.top/qmt/2026-04-06-debate-memory-system-design/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Enjoy your life! Let's Claude!",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://www.ganyiming.top/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+<body id="top">
+    <header class="header">
+    <nav class="header-nav">
+        <div class="logo">
+            <a href="https://www.ganyiming.top/" accesskey="h" title="Enjoy your life! Let&#39;s Claude! (Alt + H)">Enjoy your life! Let&#39;s Claude!</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" class="theme-toggle" accesskey="t" title="(Alt + T)" aria-label="Toggle theme">
+                    <svg class="moon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg class="sun" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu" class="menu">
+            <li>
+                <a href="https://www.ganyiming.top/" title="Home">
+                    <span>Home</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/posts/" title="Posts">
+                    <span>Posts</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/archives/" title="Archives">
+                    <span>Archives</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://www.ganyiming.top/about/" title="About">
+                    <span>About</span>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    
+    <h1 class="post-title entry-hint-parent">
+      
+    </h1>
+    <div class="post-meta"><span>James Gan</span>
+
+</div>
+  </header> 
+  <div class="post-content md-content"><h1 id="devlog-006-辩论引擎记忆系统设计--sqlite--fts5-三阶段演进">DevLog #006: 辩论引擎记忆系统设计 — SQLite + FTS5 三阶段演进<a hidden class="anchor" aria-hidden="true" href="#devlog-006-辩论引擎记忆系统设计--sqlite--fts5-三阶段演进">#</a></h1>
+<p><strong>日期</strong>: 2026-04-06
+<strong>状态</strong>: 实施中
+<strong>Tags</strong>: its, debate-engine, memory-system, sqlite, fts5</p>
+<hr>
+<h2 id="现状分析">现状分析<a hidden class="anchor" aria-hidden="true" href="#现状分析">#</a></h2>
+<h3 id="当前记忆机制的缺陷">当前记忆机制的缺陷<a hidden class="anchor" aria-hidden="true" href="#当前记忆机制的缺陷">#</a></h3>
+<p>辩论引擎 (<code>its/debate/engine.py</code>) 的&quot;记忆&quot;仅是<strong>进程内的 round-to-round dict</strong>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span>previous_round <span style="color:#f92672">=</span> {
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;bull&#34;</span>: bull_output,   <span style="color:#75715e"># 本轮多头输出</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;bear&#34;</span>: bear_output,   <span style="color:#75715e"># 本轮空头输出</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#e6db74">&#34;arbiter&#34;</span>: arbiter_output,  <span style="color:#75715e"># 本轮裁判输出</span>
+</span></span><span style="display:flex;"><span>}
+</span></span></code></pre></div><p><strong>三大问题</strong>：</p>
+<ol>
+<li>进程重启后记忆消失</li>
+<li>同一股票不同时间辩论，无法参考历史判断</li>
+<li>没有事后复盘（辩论决策 vs 实际走势）</li>
+</ol>
+<hr>
+<h2 id="业界方案对比">业界方案对比<a hidden class="anchor" aria-hidden="true" href="#业界方案对比">#</a></h2>
+<table>
+  <thead>
+      <tr>
+          <th>方案</th>
+          <th>来源</th>
+          <th>存储</th>
+          <th>检索方式</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>ChromaDB 向量记忆</td>
+          <td>TradingAgents-CN</td>
+          <td>ChromaDB</td>
+          <td>Embedding 相似度</td>
+      </tr>
+      <tr>
+          <td>QMD 混合搜索</td>
+          <td>OpenClaw/Tobi Lütke</td>
+          <td>SQLite + FTS5 + sqlite-vec</td>
+          <td>BM25 + 向量 + LLM 重排</td>
+      </tr>
+      <tr>
+          <td><strong>本方案</strong></td>
+          <td>QMT</td>
+          <td>SQLite + FTS5</td>
+          <td>BM25 全文搜索（可升级向量）</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="为什么不直接用-qmd--chromadb">为什么不直接用 QMD / ChromaDB<a hidden class="anchor" aria-hidden="true" href="#为什么不直接用-qmd--chromadb">#</a></h3>
+<ul>
+<li><strong>QMD</strong> 是 Node.js 工具，跨语言调用引入不必要的复杂度</li>
+<li><strong>ChromaDB</strong> 是独立数据库服务，对当前项目规模（单机交易）过重</li>
+<li><strong>SQLite 零部署、Python 内置、性能足够</strong>（单机万级记录）</li>
+</ul>
+<hr>
+<h2 id="三阶段演进方案">三阶段演进方案<a hidden class="anchor" aria-hidden="true" href="#三阶段演进方案">#</a></h2>
+<pre tabindex="0"><code>Phase 1 (P0)          Phase 2 (P1)           Phase 3 (P2)
+────────────────────────────────────────────────────────────
+SQLite 辩论历史存储  →  反思机制 (Reflection)  →  语义检索升级
+    ↓                      ↓                      ↓
+持久化 + 查询        事后评估 vs 实际走势      特征向量相似度
+</code></pre><h3 id="phase-1-sqlite-辩论历史存储">Phase 1: SQLite 辩论历史存储<a hidden class="anchor" aria-hidden="true" href="#phase-1-sqlite-辩论历史存储">#</a></h3>
+<p><strong>目标</strong>: 辩论结果持久化，支持按股票/日期查询历史。</p>
+<p><strong>核心 API</strong>:</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">DebateMemoryStore</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">save</span>(self, result: DebateResult) <span style="color:#f92672">-&gt;</span> int: <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_recent</span>(self, symbol: str, limit: int <span style="color:#f92672">=</span> <span style="color:#ae81ff">5</span>) <span style="color:#f92672">-&gt;</span> list[DebateRecord]: <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">get_by_date_range</span>(self, start: str, end: str) <span style="color:#f92672">-&gt;</span> list[DebateRecord]: <span style="color:#f92672">...</span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">search</span>(self, query: str, limit: int <span style="color:#f92672">=</span> <span style="color:#ae81ff">10</span>) <span style="color:#f92672">-&gt;</span> list[DebateRecord]: <span style="color:#f92672">...</span>
+</span></span></code></pre></div><p><strong>数据模型</strong>:</p>
+<table>
+  <thead>
+      <tr>
+          <th>字段</th>
+          <th>类型</th>
+          <th>说明</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>id</td>
+          <td>INTEGER PK</td>
+          <td>自增主键</td>
+      </tr>
+      <tr>
+          <td>symbol</td>
+          <td>TEXT</td>
+          <td>股票代码</td>
+      </tr>
+      <tr>
+          <td>name</td>
+          <td>TEXT</td>
+          <td>股票名称</td>
+      </tr>
+      <tr>
+          <td>price</td>
+          <td>REAL</td>
+          <td>辩论时价格</td>
+      </tr>
+      <tr>
+          <td>action</td>
+          <td>TEXT</td>
+          <td>BUY/SELL/HOLD/WATCH</td>
+      </tr>
+      <tr>
+          <td>winner</td>
+          <td>TEXT</td>
+          <td>BULL/BEAR/DRAW</td>
+      </tr>
+      <tr>
+          <td>reasoning</td>
+          <td>TEXT</td>
+          <td>裁判理由（FTS5 索引）</td>
+      </tr>
+      <tr>
+          <td>bull_thesis</td>
+          <td>TEXT</td>
+          <td>多头论点（FTS5 索引）</td>
+      </tr>
+      <tr>
+          <td>bear_thesis</td>
+          <td>TEXT</td>
+          <td>空头论点（FTS5 索引）</td>
+      </tr>
+  </tbody>
+</table>
+<h3 id="phase-2-反思机制-reflection">Phase 2: 反思机制 (Reflection)<a hidden class="anchor" aria-hidden="true" href="#phase-2-反思机制-reflection">#</a></h3>
+<p><strong>目标</strong>: 事后评估辩论决策 vs 实际走势，存储经验教训。</p>
+<pre tabindex="0"><code>交易信号执行后 → T+1/T+N 获取实际走势
+  ↓
+Reflector.evaluate(debate_record, actual_outcome)
+  ↓
+LLM 分析: &#34;判断是否正确？为什么对/错？&#34;
+  ↓
+ReflectionRecord 存入 SQLite
+  ↓
+下次辩论时注入历史经验
+</code></pre><h3 id="phase-3-语义检索升级">Phase 3: 语义检索升级<a hidden class="anchor" aria-hidden="true" href="#phase-3-语义检索升级">#</a></h3>
+<p><strong>目标</strong>: 基于行情特征相似度召回历史经验，而非仅按股票代码。</p>
+<p><strong>方案演进</strong>：</p>
+<ul>
+<li><strong>短期</strong>: 用 FTS5 + 关键词匹配（MA60支撑、MACD金叉 等）</li>
+<li><strong>中期</strong>: 引入 sqlite-vec 扩展存储 embedding 向量</li>
+<li><strong>长期</strong>: 对接本地 GGUF embedding 模型</li>
+</ul>
+<blockquote>
+<p>★ Insight ─────────────────────────────────────
+<strong>SQLite + FTS5 是一个被低估的组合</strong>。
+对于单机量化系统，FTS5 的 BM25 全文搜索已经足够满足语义召回需求，
+无需引入沉重的向量数据库。sqlite-vec 扩展让未来升级到向量检索成为可能，
+但可以等到真正需要时再升级。
+──────────────────────────────────────────────────</p>
+</blockquote>
+<hr>
+<h2 id="集成点">集成点<a hidden class="anchor" aria-hidden="true" href="#集成点">#</a></h2>
+<h3 id="debateengine-集成">DebateEngine 集成<a hidden class="anchor" aria-hidden="true" href="#debateengine-集成">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">DebateEngine</span>:
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">__init__</span>(self, client, config, memory_store<span style="color:#f92672">=</span><span style="color:#66d9ef">None</span>):
+</span></span><span style="display:flex;"><span>        self<span style="color:#f92672">.</span>memory_store <span style="color:#f92672">=</span> memory_store  <span style="color:#75715e"># 新增</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">def</span> <span style="color:#a6e22e">run_debate</span>(self, symbol, context):
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># 新增: 查询历史记忆</span>
+</span></span><span style="display:flex;"><span>        history <span style="color:#f92672">=</span> self<span style="color:#f92672">.</span>memory_store<span style="color:#f92672">.</span>get_recent(symbol) <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>memory_store <span style="color:#66d9ef">else</span> []
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># ... 注入到 prompt_ctx ...</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        result <span style="color:#f92672">=</span> <span style="color:#f92672">...</span>  <span style="color:#75715e"># 原有辩论逻辑</span>
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e"># 新增: 保存辩论结果</span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> self<span style="color:#f92672">.</span>memory_store:
+</span></span><span style="display:flex;"><span>            self<span style="color:#f92672">.</span>memory_store<span style="color:#f92672">.</span>save(result)
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">return</span> result
+</span></span></code></pre></div><h3 id="prompts-增强">Prompts 增强<a hidden class="anchor" aria-hidden="true" href="#prompts-增强">#</a></h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-text-size-adjust:none;"><code class="language-python" data-lang="python"><span style="display:flex;"><span><span style="color:#66d9ef">def</span> <span style="color:#a6e22e">build_bull_prompt</span>(context, previous_round<span style="color:#f92672">=</span><span style="color:#66d9ef">None</span>, history<span style="color:#f92672">=</span><span style="color:#66d9ef">None</span>):
+</span></span><span style="display:flex;"><span>    <span style="color:#66d9ef">if</span> history:
+</span></span><span style="display:flex;"><span>        parts<span style="color:#f92672">.</span>append(<span style="color:#e6db74">&#34;</span><span style="color:#ae81ff">\n</span><span style="color:#e6db74">## 历史辩论记录&#34;</span>)
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">for</span> record <span style="color:#f92672">in</span> history[<span style="color:#f92672">-</span><span style="color:#ae81ff">3</span>:]:
+</span></span><span style="display:flex;"><span>            parts<span style="color:#f92672">.</span>append(<span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;- </span><span style="color:#e6db74">{</span>record<span style="color:#f92672">.</span>created_at<span style="color:#e6db74">}</span><span style="color:#e6db74">: </span><span style="color:#e6db74">{</span>record<span style="color:#f92672">.</span>action<span style="color:#e6db74">}</span><span style="color:#e6db74"> &#34;</span>
+</span></span><span style="display:flex;"><span>                        <span style="color:#e6db74">f</span><span style="color:#e6db74">&#34;(rating=</span><span style="color:#e6db74">{</span>record<span style="color:#f92672">.</span>rating<span style="color:#e6db74">}</span><span style="color:#e6db74">, conf=</span><span style="color:#e6db74">{</span>record<span style="color:#f92672">.</span>confidence<span style="color:#e6db74">:</span><span style="color:#e6db74">.0%</span><span style="color:#e6db74">}</span><span style="color:#e6db74">)&#34;</span>)
+</span></span></code></pre></div><hr>
+<h2 id="文件结构">文件结构<a hidden class="anchor" aria-hidden="true" href="#文件结构">#</a></h2>
+<pre tabindex="0"><code>its/
+  memory/
+    __init__.py
+    store.py          # Phase 1: DebateMemoryStore
+    reflection.py     # Phase 2: Reflector
+    search.py         # Phase 3: SemanticSearch
+    models.py         # 数据模型
+</code></pre><hr>
+<h2 id="实施优先级">实施优先级<a hidden class="anchor" aria-hidden="true" href="#实施优先级">#</a></h2>
+<table>
+  <thead>
+      <tr>
+          <th>Phase</th>
+          <th>价值</th>
+          <th>复杂度</th>
+          <th>优先级</th>
+      </tr>
+  </thead>
+  <tbody>
+      <tr>
+          <td>Phase 1</td>
+          <td>避免重复辩论，节约 API 成本</td>
+          <td>低</td>
+          <td><strong>P0</strong></td>
+      </tr>
+      <tr>
+          <td>Phase 2</td>
+          <td>从错误中学习，提升决策质量</td>
+          <td>中</td>
+          <td>P1</td>
+      </tr>
+      <tr>
+          <td>Phase 3</td>
+          <td>跨股票经验迁移</td>
+          <td>高</td>
+          <td>P2</td>
+      </tr>
+  </tbody>
+</table>
+<hr>
+<p><em>Generated from: docs/MEMORY_SYSTEM_DESIGN.md</em></p>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+        <span>&copy; 2026 <a href="https://www.ganyiming.top/">Enjoy your life! Let&#39;s Claude!</a></span> · 
+
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" id="top-link" class="top-link hidden" aria-label="go to top" title="Go to Top (Alt + G)" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevrons-up">
+        <polyline points="17 11 12 6 7 11"></polyline>
+        <polyline points="17 18 12 13 7 18"></polyline>
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu');
+    if (menu) {
+        
+        const scrollPosition = localStorage.getItem("menu-scroll-position");
+        if (scrollPosition) {
+            menu.scrollLeft = parseInt(scrollPosition, 10);
+        }
+        
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var toplink = document.getElementById("top-link");
+    window.onscroll = function () {
+        const scrollThreshold = window.innerHeight;
+        if (document.body.scrollTop > scrollThreshold || document.documentElement.scrollTop > scrollThreshold) {
+            toplink.classList.remove("hidden");
+        } else {
+            toplink.classList.add("hidden");
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        const html = document.querySelector("html");
+        if (html.dataset.theme === "dark") {
+            html.dataset.theme = 'light';
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            html.dataset.theme = 'dark';
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+</body>
+
+</html>
