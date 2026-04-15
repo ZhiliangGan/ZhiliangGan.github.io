@@ -41,11 +41,10 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           publish_dir: ./public
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           user_name: ZhiliangGan
           user_email: ZhiliangGan@users.noreply.github.com
           cname: www.ganyiming.top
-        env:
-          ACTION_DEPLOY_KEY: ${{ secrets.ACTIONS_DEPLOY_KEY }}
 
   sync-gitee:
     runs-on: ubuntu-latest
