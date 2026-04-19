@@ -164,6 +164,26 @@ Stay tuned for more content coming soon.
   <footer class="entry-footer"><span title='2026-04-15 00:00:00 +0000 UTC'>April 15, 2026</span>&nbsp;·&nbsp;<span>James Gan</span></footer>
   <a class="entry-link" aria-label="post link to Hello World" href="https://www.ganyiming.top/posts/hello-world/"></a>
 </article>
+
+<article class="post-entry"> 
+  <header class="entry-header">
+    <h2 class="entry-hint-parent">
+    </h2>
+  </header>
+  <div class="entry-content">
+    <p>QMT &#43; xtquant 量化回测避坑指南 基于中证500多因子&#43;ATR风控策略的真实回测经历总结 日期：2026-04-19
+一、QMT 软件层面的坑 1. QMT Java UI 会破坏 .py 策略文件 现象：在 QMT Java 界面里打开、保存 .py 文件后，文件内容变成乱码或 base64 字符串。
+原因：QMT Java 层在保存策略文件时会 base64 编码文件内容（可能是为了加密或防篡改），再次打开时解码异常导致文件损坏。
+解决方案：
+策略文件单独存放在 QMT 软件目录外（如 D:\my_strategies\） 用外部编辑器（VS Code）编辑策略，用命令行方式运行回测，完全绕过 QMT Java UI 核心原则：QMT Java UI 只用来观察和下载数据，不要用它编辑策略文件 2. QMT 内置回测引擎依赖交易系统配置 现象：尝试用 stgentry.run_file() 独立运行策略文件时报错 subscribeFormula 配置缺失。
+原因：stgentry.run_file() 并不是一个纯数据API，它依赖 QMT 交易引擎的公式订阅、 benchmark 设置等交易上下文。
+解决方案：
+完全放弃 QMT 内置回测引擎 使用 xtquant Python 包直接连接 QMT 数据服务（mini 行情端口 58610） 自己实现回测循环，不依赖 stgentry 二、xtquant / xtdata 数据API的坑 3. get_market_data 的数据结构 现象：初学者很容易搞混返回格式。
+...</p>
+  </div>
+  <footer class="entry-footer"><span>James Gan</span></footer>
+  <a class="entry-link" aria-label="post link to " href="https://www.ganyiming.top/posts/qmt%E5%9B%9E%E6%B5%8B%E9%81%BF%E5%9D%91%E6%8C%87%E5%8D%97/"></a>
+</article>
     </main>
     
 <footer class="footer">

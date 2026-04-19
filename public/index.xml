@@ -34,6 +34,42 @@
     </item>
     <item>
       <title></title>
+      <link>https://www.ganyiming.top/posts/qmt%E5%9B%9E%E6%B5%8B%E9%81%BF%E5%9D%91%E6%8C%87%E5%8D%97/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>https://www.ganyiming.top/posts/qmt%E5%9B%9E%E6%B5%8B%E9%81%BF%E5%9D%91%E6%8C%87%E5%8D%97/</guid>
+      <description>&lt;h1 id=&#34;qmt--xtquant-量化回测避坑指南&#34;&gt;QMT + xtquant 量化回测避坑指南&lt;/h1&gt;
+&lt;blockquote&gt;
+&lt;p&gt;基于中证500多因子+ATR风控策略的真实回测经历总结
+日期：2026-04-19&lt;/p&gt;
+&lt;/blockquote&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;一qmt-软件层面的坑&#34;&gt;一、QMT 软件层面的坑&lt;/h2&gt;
+&lt;h3 id=&#34;1-qmt-java-ui-会破坏-py-策略文件&#34;&gt;1. QMT Java UI 会破坏 .py 策略文件&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;现象&lt;/strong&gt;：在 QMT Java 界面里打开、保存 .py 文件后，文件内容变成乱码或 base64 字符串。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;原因&lt;/strong&gt;：QMT Java 层在保存策略文件时会 base64 编码文件内容（可能是为了加密或防篡改），再次打开时解码异常导致文件损坏。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;解决方案&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;策略文件单独存放在 QMT 软件目录外（如 &lt;code&gt;D:\my_strategies\&lt;/code&gt;）&lt;/li&gt;
+&lt;li&gt;用外部编辑器（VS Code）编辑策略，用命令行方式运行回测，完全绕过 QMT Java UI&lt;/li&gt;
+&lt;li&gt;核心原则：&lt;strong&gt;QMT Java UI 只用来观察和下载数据，不要用它编辑策略文件&lt;/strong&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h3 id=&#34;2-qmt-内置回测引擎依赖交易系统配置&#34;&gt;2. QMT 内置回测引擎依赖交易系统配置&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;现象&lt;/strong&gt;：尝试用 &lt;code&gt;stgentry.run_file()&lt;/code&gt; 独立运行策略文件时报错 &lt;code&gt;subscribeFormula&lt;/code&gt; 配置缺失。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;原因&lt;/strong&gt;：&lt;code&gt;stgentry.run_file()&lt;/code&gt; 并不是一个纯数据API，它依赖 QMT 交易引擎的公式订阅、 benchmark 设置等交易上下文。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;解决方案&lt;/strong&gt;：&lt;/p&gt;
+&lt;ul&gt;
+&lt;li&gt;完全放弃 QMT 内置回测引擎&lt;/li&gt;
+&lt;li&gt;使用 &lt;strong&gt;xtquant Python 包&lt;/strong&gt;直接连接 QMT 数据服务（mini 行情端口 58610）&lt;/li&gt;
+&lt;li&gt;自己实现回测循环，不依赖 stgentry&lt;/li&gt;
+&lt;/ul&gt;
+&lt;hr&gt;
+&lt;h2 id=&#34;二xtquant--xtdata-数据api的坑&#34;&gt;二、xtquant / xtdata 数据API的坑&lt;/h2&gt;
+&lt;h3 id=&#34;3-get_market_data-的数据结构&#34;&gt;3. &lt;code&gt;get_market_data&lt;/code&gt; 的数据结构&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;现象&lt;/strong&gt;：初学者很容易搞混返回格式。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title></title>
       <link>https://www.ganyiming.top/qmt/2026-04-05-monorepo-unification-plan/</link>
       <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
       <guid>https://www.ganyiming.top/qmt/2026-04-05-monorepo-unification-plan/</guid>
